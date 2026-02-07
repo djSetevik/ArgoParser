@@ -170,7 +170,6 @@ namespace ArgoParser
         [JsonPropertyName("ПрочностьБетона")]
         public double ConcreteStrength { get; set; }
 
-        // Типы арматуры разбиты на 4 отдельных поля
         [JsonPropertyName("ТипРастянутойАрматуры")]
         public double TensileReinforcementType { get; set; }
 
@@ -220,21 +219,38 @@ namespace ArgoParser
         public List<Point2D> BallastContour { get; set; } = new List<Point2D>();
     }
 
+    public class Point2D
+    {
+        [JsonPropertyName("Z")]
+        public double Z { get; set; }
+
+        [JsonPropertyName("Y")]
+        public double Y { get; set; }
+
+        public Point2D() { }
+
+        public Point2D(double z, double y)
+        {
+            Z = z;
+            Y = y;
+        }
+    }
+
     public class Beam
     {
         [JsonPropertyName("Номер")]
         public int Number { get; set; }
 
-        [JsonPropertyName("ИнтенсивностьНагрузкиОтТротуара")]
+        [JsonPropertyName("НагрузкаТротуарИнтенсивность")]
         public double SidewalkLoadIntensity { get; set; }
 
-        [JsonPropertyName("КоординатаНагрузкиОтТротуара")]
+        [JsonPropertyName("НагрузкаТротуарКоордината")]
         public double SidewalkLoadCoordinate { get; set; }
 
-        [JsonPropertyName("ИнтенсивностьНагрузкиОтОграждения")]
+        [JsonPropertyName("НагрузкаОгражденияИнтенсивность")]
         public double FenceLoadIntensity { get; set; }
 
-        [JsonPropertyName("КоординатаНагрузкиОтОграждения")]
+        [JsonPropertyName("НагрузкаОгражденияКоордината")]
         public double FenceLoadCoordinate { get; set; }
 
         [JsonPropertyName("АрмированиеПлиты")]
@@ -249,40 +265,40 @@ namespace ArgoParser
         [JsonPropertyName("КоординатыРасчетныхСечений")]
         public List<double> SectionCoordinates { get; set; } = new List<double>();
 
-        [JsonPropertyName("НомераТочекСопряженияПлитыСБалкой")]
+        [JsonPropertyName("ТочкиСопряженияПлитыСБалкой")]
         public int[] SlabBeamJunction { get; set; } = new int[2];
 
-        [JsonPropertyName("НомераТочекСопряженияПлитыСВутом")]
+        [JsonPropertyName("ТочкиСопряженияПлитыСВутом")]
         public int[] SlabVuteJunction { get; set; } = new int[2];
 
-        [JsonPropertyName("НомераТочекСопряженияБортаСПлитой")]
+        [JsonPropertyName("ТочкиСопряженияБортаСПлитой")]
         public int[] BorderSlabJunction { get; set; } = new int[2];
 
-        [JsonPropertyName("НомераТочекСопряженияБортаСПлитой2")]
+        [JsonPropertyName("ТочкиСопряженияБортаСПлитой2")]
         public int[] BorderSlabJunction2 { get; set; } = new int[2];
 
-        [JsonPropertyName("ПродольныйРазрезСоСтороныМеньшейZ")]
+        [JsonPropertyName("ПризнакПродольногоРазрезаСоСтороныМеньшейZ")]
         public double LongitudinalCutLower { get; set; }
 
-        [JsonPropertyName("ПродольныйРазрезСоСтороныБольшейZ")]
+        [JsonPropertyName("ПризнакПродольногоРазрезаСоСтороныБольшейZ")]
         public double LongitudinalCutUpper { get; set; }
 
         [JsonPropertyName("КонтурПоперечногоСечения")]
         public List<Point2D> CrossSectionContour { get; set; } = new List<Point2D>();
 
-        [JsonPropertyName("КоличествоИзменённыхТочек")]
+        [JsonPropertyName("КоличествоИзмененныхТочек")]
         public int ChangedPointsCount { get; set; }
 
-        [JsonPropertyName("НомераИзменённыхТочек")]
+        [JsonPropertyName("ИндексыИзмененныхТочек")]
         public List<int> ChangedPointIndices { get; set; } = new List<int>();
 
-        [JsonPropertyName("ИзменённыеТочки")]
+        [JsonPropertyName("ИзмененныеТочки")]
         public List<Point2D> ChangedPoints { get; set; } = new List<Point2D>();
 
         [JsonPropertyName("Отгибы")]
         public List<BendReinforcement> Bends { get; set; } = new List<BendReinforcement>();
 
-        [JsonPropertyName("Хомуты")]
+        [JsonPropertyName("СекцииХомутов")]
         public List<StirrupSection> StirrupSections { get; set; } = new List<StirrupSection>();
 
         [JsonPropertyName("РастянутыеСтержни")]
@@ -292,21 +308,12 @@ namespace ArgoParser
         public List<CompressedBar> CompressedBars { get; set; } = new List<CompressedBar>();
     }
 
-    public class ConcentratedForce
-    {
-        [JsonPropertyName("КоординатаX")]
-        public double X { get; set; }
-
-        [JsonPropertyName("Величина")]
-        public double Value { get; set; }
-    }
-
     public class SlabReinforcement
     {
         [JsonPropertyName("КоличествоРасчетныхСтержней")]
         public int CalculatedBarsCount { get; set; }
 
-        [JsonPropertyName("Стержни")]
+        [JsonPropertyName("РасчетныеСтержни")]
         public List<CalculatedBar> CalculatedBars { get; set; } = new List<CalculatedBar>();
     }
 
@@ -315,16 +322,25 @@ namespace ArgoParser
         [JsonPropertyName("КоличествоТочекПерегиба")]
         public int BendPointsCount { get; set; }
 
-        [JsonPropertyName("ПлощадьПоперечногоСечения")]
+        [JsonPropertyName("Площадь")]
         public double Area { get; set; }
 
         [JsonPropertyName("ТочкиПерегиба")]
         public List<Point2D> BendPoints { get; set; } = new List<Point2D>();
     }
 
+    public class ConcentratedForce
+    {
+        [JsonPropertyName("X")]
+        public double X { get; set; }
+
+        [JsonPropertyName("Значение")]
+        public double Value { get; set; }
+    }
+
     public class BendReinforcement
     {
-        [JsonPropertyName("ПлощадьПоперечногоСечения")]
+        [JsonPropertyName("Площадь")]
         public double Area { get; set; }
 
         [JsonPropertyName("КоординатаВерхнегоКонца")]
@@ -333,16 +349,16 @@ namespace ArgoParser
         [JsonPropertyName("КоординатаНижнегоКонца")]
         public double LowerCoordinate { get; set; }
 
-        [JsonPropertyName("ПриращениеВерхнее")]
+        [JsonPropertyName("DeltaВерхнее")]
         public double DeltaUpper { get; set; }
 
-        [JsonPropertyName("ПриращениеНижнее")]
+        [JsonPropertyName("DeltaНижнее")]
         public double DeltaLower { get; set; }
     }
 
     public class StirrupSection
     {
-        [JsonPropertyName("КоординатаXКонцаУчастка")]
+        [JsonPropertyName("КоординатаКонцаУчастка")]
         public double EndX { get; set; }
 
         [JsonPropertyName("ПлощадьХомута")]
@@ -354,37 +370,37 @@ namespace ArgoParser
 
     public class TensileBar
     {
-        [JsonPropertyName("Xmin")]
+        [JsonPropertyName("XMin")]
         public double XMin { get; set; }
 
-        [JsonPropertyName("Xmax")]
+        [JsonPropertyName("XMax")]
         public double XMax { get; set; }
 
-        [JsonPropertyName("ПриращениеНижнее")]
+        [JsonPropertyName("DeltaНижнее")]
         public double DeltaLower { get; set; }
 
-        [JsonPropertyName("ПлощадьПоперечногоСечения")]
+        [JsonPropertyName("Площадь")]
         public double Area { get; set; }
     }
 
     public class CompressedBar
     {
-        [JsonPropertyName("Xmin")]
+        [JsonPropertyName("XMin")]
         public double XMin { get; set; }
 
-        [JsonPropertyName("Xmax")]
+        [JsonPropertyName("XMax")]
         public double XMax { get; set; }
 
-        [JsonPropertyName("ПриращениеВерхнее")]
+        [JsonPropertyName("DeltaВерхнее")]
         public double DeltaUpper { get; set; }
 
-        [JsonPropertyName("ПлощадьПоперечногоСечения")]
+        [JsonPropertyName("Площадь")]
         public double Area { get; set; }
     }
 
     public class DetailedReinforcement
     {
-        [JsonPropertyName("Балки")]
+        [JsonPropertyName("ДетализацияБалок")]
         public List<BeamDetailed> BeamDetails { get; set; } = new List<BeamDetailed>();
     }
 
@@ -399,8 +415,14 @@ namespace ArgoParser
         [JsonPropertyName("СжатыеСтержни")]
         public List<DetailedBarGroup> CompressedBars { get; set; } = new List<DetailedBarGroup>();
 
-        [JsonPropertyName("СтержниПлиты")]
+        [JsonPropertyName("АрматураПлиты")]
         public List<PlateBarInfo> PlateBars { get; set; } = new List<PlateBarInfo>();
+
+        [JsonPropertyName("Отгибы")]
+        public List<DetailedBendGroup> Bends { get; set; } = new List<DetailedBendGroup>();
+
+        [JsonPropertyName("Хомуты")]
+        public List<DetailedStirrupSection> Stirrups { get; set; } = new List<DetailedStirrupSection>();
     }
 
     public class DetailedBarGroup
@@ -413,6 +435,9 @@ namespace ArgoParser
 
         [JsonPropertyName("КоординатыZ")]
         public List<double> ZCoordinates { get; set; } = new List<double>();
+
+        [JsonPropertyName("КоординатаY")]
+        public double YCoordinate { get; set; }
     }
 
     public class PlateBarInfo
@@ -424,14 +449,45 @@ namespace ArgoParser
         public double Step { get; set; }
     }
 
-    public struct Point2D
+    public class DetailedBendGroup
     {
-        [JsonPropertyName("Z")]
-        public double Z { get; set; }
+        [JsonPropertyName("Количество")]
+        public int Count { get; set; }
 
-        [JsonPropertyName("Y")]
-        public double Y { get; set; }
+        [JsonPropertyName("Диаметр")]
+        public double Diameter { get; set; }
 
-        public Point2D(double z, double y) { Z = z; Y = y; }
+        [JsonPropertyName("Координаты")]
+        public List<BendCoordinates> Coordinates { get; set; } = new List<BendCoordinates>();
+    }
+
+    public class BendCoordinates
+    {
+        [JsonPropertyName("Y1")]
+        public double Y1 { get; set; }
+
+        [JsonPropertyName("Z1")]
+        public double Z1 { get; set; }
+
+        [JsonPropertyName("Y2")]
+        public double Y2 { get; set; }
+
+        [JsonPropertyName("Z2")]
+        public double Z2 { get; set; }
+    }
+
+    public class DetailedStirrupSection
+    {
+        [JsonPropertyName("Количество")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("Диаметр")]
+        public double Diameter { get; set; }
+
+        [JsonPropertyName("Шаг")]
+        public double Step { get; set; }
+
+        [JsonPropertyName("КоординатыX")]
+        public List<double> XCoordinates { get; set; } = new List<double>();
     }
 }

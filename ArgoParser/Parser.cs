@@ -89,9 +89,11 @@ namespace ArgoParser
             gp.FullLength = ReadDouble();
             Console.WriteLine($"  Полная длина: {gp.FullLength}");
 
+            // Количество балок
             gp.BeamCount = ReadInt();
             Console.WriteLine($"  Количество балок: {gp.BeamCount}");
 
+            // Координаты осей балок
             for (int i = 0; i < gp.BeamCount; i++)
                 gp.BeamCoordinates.Add(ReadDouble());
 
@@ -101,14 +103,17 @@ namespace ArgoParser
             gp.TrackAxisZ.Add(ReadDouble());
             gp.TrackAxisZ.Add(ReadDouble());
 
+            // Признак наличия диафрагм только для многобалочных ПС
             if (gp.BeamCount > 1)
             {
                 gp.DiaphragmPresence = ReadDouble();
             }
 
+            // Количество точек контура балласта
             int ballastPointCount = ReadInt();
             Console.WriteLine($"  Точек контура балласта: {ballastPointCount}");
 
+            // Точки контура балласта - пары Z Y
             for (int i = 0; i < ballastPointCount; i++)
             {
                 double z = ReadDouble();
@@ -125,7 +130,6 @@ namespace ArgoParser
 
             int ribCount = fileCode?.MainRibCount ?? 0;
 
-            bool is8Points = (totalBeams == 1);
             bool isEdgeBeam = (beamNumber == 1 || beamNumber == totalBeams);
             bool isInnerBeam = (totalBeams > 2) && !isEdgeBeam;
             bool hasLoads = isEdgeBeam || (totalBeams <= 2);
@@ -159,25 +163,31 @@ namespace ArgoParser
             for (int i = 0; i < beam.SectionCount; i++)
                 beam.SectionCoordinates.Add(ReadDouble());
 
+            // Junction points - всегда 2 пары для всех балок
             beam.SlabBeamJunction[0] = ReadInt();
             beam.SlabBeamJunction[1] = ReadInt();
             beam.SlabVuteJunction[0] = ReadInt();
             beam.SlabVuteJunction[1] = ReadInt();
 
-            if (!isInnerBeam)
+            // BorderSlabJunction только для крайних балок (балка 1 и последняя)
+            if (isEdgeBeam)
             {
                 beam.BorderSlabJunction[0] = ReadInt();
                 beam.BorderSlabJunction[1] = ReadInt();
+
+                // Вторая пара BorderSlabJunction только для плитных (1-балочных) ПС
+                // У них борт с обеих сторон
+                if (totalBeams == 1)
+                {
+                    beam.BorderSlabJunction2[0] = ReadInt();
+                    beam.BorderSlabJunction2[1] = ReadInt();
+                }
             }
 
-            if (is8Points)
-            {
-                beam.BorderSlabJunction2[0] = ReadInt();
-                beam.BorderSlabJunction2[1] = ReadInt();
-            }
-
+            // Продольные разрезы (признаки наличия)
             beam.LongitudinalCutLower = ReadDouble();
             beam.LongitudinalCutUpper = ReadDouble();
+            Console.WriteLine($"  Продольные разрезы: нижний={beam.LongitudinalCutLower}, верхний={beam.LongitudinalCutUpper}");
 
             int crossSectionCount = ReadInt();
             Console.WriteLine($"  Точек контура сечения: {crossSectionCount}");
