@@ -7,4 +7,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Reference Include="CrossSection.Net">
+      <HintPath>..\..\ReinforcementManager\CrossSection.Net.dll</HintPath>
+    </Reference>
+    <Reference Include="GeometryLibrary">
+      <HintPath>..\..\ReinforcementManager\GeometryLibrary.dll</HintPath>
+    </Reference>
+    <Reference Include="ParisCAD">
+      <HintPath>..\..\ReinforcementManager\ParisCAD.dll</HintPath>
+    </Reference>
+    <Reference Include="TriangleNet">
+      <HintPath>..\..\ReinforcementManager\TriangleNet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

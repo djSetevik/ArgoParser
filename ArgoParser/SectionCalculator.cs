@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+// Явно указываем что Point2D тут = ArgoParser.Point2D
+using ArgoPoint2D = ArgoParser.Point2D;
 
 namespace ArgoParser
 {
@@ -326,13 +328,12 @@ namespace ArgoParser
             return Math.Min(it, itMax);
         }
 
-        public static List<(double X, double Y)> ConvertArgoContour(List<Point2D> argoPoints, double offsetZ = 0)
+        public static List<(double X, double Y)> ConvertArgoContour(
+                    List<ArgoPoint2D> argoPoints, double offsetZ = 0)
         {
             var result = new List<(double X, double Y)>();
             foreach (var p in argoPoints)
             {
-                // Z (см) → X (мм), Y (см) → Y (мм)
-                // Смещаем по Z относительно оси балки
                 result.Add(((p.Z - offsetZ) * 10, p.Y * 10));
             }
             return result;
