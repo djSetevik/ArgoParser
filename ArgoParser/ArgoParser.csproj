@@ -9,17 +9,27 @@
 
   <ItemGroup>
     <Reference Include="CrossSection.Net">
-      <HintPath>..\..\ReinforcementManager\CrossSection.Net.dll</HintPath>
+      <HintPath>..\CrossSection.Net.dll</HintPath>
     </Reference>
     <Reference Include="GeometryLibrary">
-      <HintPath>..\..\ReinforcementManager\GeometryLibrary.dll</HintPath>
+      <HintPath>..\GeometryLibrary.dll</HintPath>
     </Reference>
     <Reference Include="ParisCAD">
-      <HintPath>..\..\ReinforcementManager\ParisCAD.dll</HintPath>
+      <HintPath>..\ParisCAD.dll</HintPath>
     </Reference>
     <Reference Include="TriangleNet">
-      <HintPath>..\..\ReinforcementManager\TriangleNet.dll</HintPath>
+      <HintPath>..\TriangleNet.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+	
+  <ItemGroup>
+    <Folder Include="Data\PRSSM\" />
+  </ItemGroup>
+	<ItemGroup>
+		<None Update="Data\RAW\**\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>

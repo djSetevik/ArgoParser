@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Encodings.Web;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ArgoParser
 {
@@ -18,73 +19,82 @@ namespace ArgoParser
             Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
 
-            // Запрос пути
-            Console.Write("Введите путь к файлу или папке АРГО: ");
-            string inputPath = Console.ReadLine()?.Trim().Trim('"') ?? "";
+            // Определяем папки Data/RAW и Data/PRSSM относительно проекта
+            // Определяем папки Data/RAW и Data/PRSSM относительно проекта
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string rawFolder = Path.Combine(baseDir, "Data", "RAW");
+            string prssmFolder = Path.Combine(baseDir, "Data", "PRSSM");
 
-            if (string.IsNullOrEmpty(inputPath))
+            Console.WriteLine($"Папка RAW: {rawFolder}");
+
+            // Создаём папки если не существуют
+            if (!Directory.Exists(rawFolder))
             {
-                Console.WriteLine("Путь не указан!");
+                Directory.CreateDirectory(rawFolder);
+                Console.WriteLine($"Создана папка: {rawFolder}");
+                Console.WriteLine("Поместите файлы АРГО в эту папку и запустите программу снова.");
                 WaitForExit();
                 return;
             }
 
-            if (Directory.Exists(inputPath))
+            if (!Directory.Exists(prssmFolder))
             {
-                ProcessDirectory(inputPath);
-            }
-            else if (File.Exists(inputPath))
-            {
-                ProcessFile(inputPath);
-            }
-            else
-            {
-                Console.WriteLine($"Путь не найден: {inputPath}");
+                Directory.CreateDirectory(prssmFolder);
             }
 
-            WaitForExit();
-        }
-
-        static void WaitForExit()
-        {
-            Console.WriteLine("\nНажмите Enter для выхода...");
-            Console.ReadLine();
-        }
-
-        static void ProcessDirectory(string dirPath)
-        {
-            Console.WriteLine($"\nПапка: {dirPath}");
-
-            string outputDir = Path.Combine(dirPath, "PRSSM");
-            Directory.CreateDirectory(outputDir);
-
-            // Фильтр файлов АРГО
-            var files = Directory.GetFiles(dirPath, "*.*", SearchOption.TopDirectoryOnly)
+            // Ищем все файлы АРГО в папке RAW
+            var files = Directory.GetFiles(rawFolder, "*.*", SearchOption.AllDirectories)
                 .Where(f => IsArgoFile(f))
                 .OrderBy(f => f)
                 .ToArray();
 
+            if (files.Length == 0)
+            {
+                Console.WriteLine($"Файлы АРГО не найдены в папке: {rawFolder}");
+                WaitForExit();
+                return;
+            }
+
+            Console.WriteLine($"Папка RAW: {rawFolder}");
+            Console.WriteLine($"Папка PRSSM: {prssmFolder}");
             Console.WriteLine($"Найдено файлов АРГО: {files.Length}\n");
+            Console.WriteLine(new string('═', 70));
 
             int success = 0, failed = 0;
             var errors = new List<string>();
 
             foreach (var file in files)
             {
+                string relativePath = Path.GetRelativePath(rawFolder, file);
                 string fileName = Path.GetFileName(file);
-                Console.Write($"  {fileName,-40} ");
+
+                Console.Write($"  {relativePath,-50} ");
 
                 try
                 {
+                    // 1) Парсим файл АРГО
                     var parser = new ArgoParser();
                     var doc = parser.Parse(file);
 
+                    // 2) Конвертируем в PRSSM
                     var converter = new ArgoToPrssmConverter();
                     var prssmDoc = converter.Convert(doc);
+
+                    // 3) Определяем выходной путь (сохраняем структуру подпапок)
+                    string relativeDir = Path.GetDirectoryName(relativePath) ?? "";
+                    string outputDir = string.IsNullOrEmpty(relativeDir)
+                        ? prssmFolder
+                        : Path.Combine(prssmFolder, relativeDir);
+
+                    if (!Directory.Exists(outputDir))
+                    {
+                        Directory.CreateDirectory(outputDir);
+                    }
 
                     string outName = fileName.Replace(".", "_") + ".prssm";
                     string outPath = Path.Combine(outputDir, outName);
 
+                    // 4) Сохраняем JSON
                     var options = new JsonSerializerOptions
                     {
                         WriteIndented = true,
@@ -94,89 +104,42 @@ namespace ArgoParser
                     string json = JsonSerializer.Serialize(prssmDoc, options);
                     File.WriteAllText(outPath, json);
 
-                    Console.WriteLine($"✓ {outName}");
+                    Console.WriteLine($"✓");
                     success++;
                 }
                 catch (Exception ex)
                 {
-                    string errMsg = ex.Message.Length > 50 ? ex.Message.Substring(0, 50) + "..." : ex.Message;
+                    string errMsg = ex.Message.Length > 30 ? ex.Message.Substring(0, 30) + "..." : ex.Message;
                     Console.WriteLine($"✗ {errMsg}");
-                    errors.Add($"{fileName}: {ex.Message}");
+                    errors.Add($"{relativePath}: {ex.Message}");
                     failed++;
                 }
             }
 
-            Console.WriteLine($"\n{'═',60}");
-            Console.WriteLine($"ИТОГО: {success} успешно, {failed} ошибок из {files.Length} файлов");
-            Console.WriteLine($"Результаты в: {outputDir}");
+            Console.WriteLine(new string('═', 70));
+            Console.WriteLine($"\nИТОГО: {success} успешно, {failed} ошибок из {files.Length} файлов");
+            Console.WriteLine($"Результаты в: {prssmFolder}");
 
-            if (errors.Count > 0 && errors.Count <= 10)
+            if (errors.Count > 0 && errors.Count <= 15)
             {
                 Console.WriteLine("\nОШИБКИ:");
                 foreach (var err in errors)
                     Console.WriteLine($"  • {err}");
             }
+            else if (errors.Count > 15)
+            {
+                Console.WriteLine($"\nОШИБКИ ({errors.Count} шт., показаны первые 15):");
+                foreach (var err in errors.Take(15))
+                    Console.WriteLine($"  • {err}");
+            }
+
+            WaitForExit();
         }
 
-        static void ProcessFile(string filePath)
+        static void WaitForExit()
         {
-            string fileName = Path.GetFileName(filePath);
-            Console.WriteLine($"\nФайл: {fileName}");
-
-            try
-            {
-                var parser = new ArgoParser();
-                var doc = parser.Parse(filePath);
-
-                Console.WriteLine($"\n--- Результат парсинга ---");
-                Console.WriteLine($"  Бетон: {doc.GlobalParams.ConcreteStrength} МПа");
-                Console.WriteLine($"  Длина: {doc.GlobalParams.FullLength} см");
-                Console.WriteLine($"  Балок: {doc.GlobalParams.BeamCount}");
-
-                foreach (var beam in doc.Beams)
-                {
-                    Console.WriteLine($"  Балка #{beam.Number}: контур={beam.CrossSectionContour.Count} точек, " +
-                        $"растян={beam.TensileBars.Count}, сжат={beam.CompressedBars.Count}, " +
-                        $"отгибы={beam.Bends.Count}, хомуты={beam.StirrupSections.Count}");
-                }
-
-                // Конвертация
-                Console.WriteLine($"\n--- Конвертация в PRSSM ---");
-                var converter = new ArgoToPrssmConverter();
-                var prssmDoc = converter.Convert(doc);
-
-                string dir = Path.GetDirectoryName(filePath) ?? "";
-                string outName = Path.GetFileName(filePath).Replace(".", "_") + ".prssm";
-                string outPath = Path.Combine(dir, outName);
-
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                };
-                string json = JsonSerializer.Serialize(prssmDoc, options);
-                File.WriteAllText(outPath, json);
-
-                Console.WriteLine($"✓ Сохранено: {outPath}");
-
-                // Краткая информация о результате
-                foreach (var beam in prssmDoc.Beams)
-                {
-                    var part = beam.BeamParts.FirstOrDefault();
-                    if (part != null)
-                    {
-                        Console.WriteLine($"  Балка #{beam.Id}: A={part.Section.Area:F0} мм², " +
-                            $"арматура прод={beam.ReinforcementLongitudinals?.Count ?? 0}, " +
-                            $"попер={beam.ReinforcementTransverses?.Count ?? 0}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"\n✗ ОШИБКА: {ex.Message}");
-                Console.WriteLine($"\nСтек вызовов:\n{ex.StackTrace}");
-            }
+            Console.WriteLine("\nНажмите Enter для выхода...");
+            Console.ReadLine();
         }
 
         static bool IsArgoFile(string path)

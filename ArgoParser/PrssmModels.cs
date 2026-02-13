@@ -121,7 +121,7 @@ namespace ArgoParser
     public class PrssmSection
     {
         [JsonPropertyName("Name")]
-        public string Name { get; set; } = "Пользовательское";
+        public string Name { get; set; } = "Custom";
 
         [JsonPropertyName("SectionType")]
         public int SectionType { get; set; } = 1;
@@ -205,7 +205,7 @@ namespace ArgoParser
         public int Id { get; set; }
 
         [JsonPropertyName("CadType")]
-        public int CadType { get; set; } = 0;
+        public int CadType { get; set; } = 0;  // 0 для custom
 
         [JsonPropertyName("Name")]
         public string Name { get; set; } = "custom";
@@ -253,7 +253,7 @@ namespace ArgoParser
         public double Y { get; set; }
 
         [JsonPropertyName("IsAnchor")]
-        public bool IsAnchor { get; set; } = true;
+        public bool IsAnchor { get; set; } = false;  // ИЗМЕНЕНО: false для custom
 
         [JsonPropertyName("IsProfilePoint")]
         public bool IsProfilePoint { get; set; } = true;

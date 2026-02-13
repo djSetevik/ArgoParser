@@ -184,13 +184,16 @@ namespace ArgoParser
                 }
             }
 
-            // Продольные разрезы (признаки наличия)
+            // Продольные разрезы
             beam.LongitudinalCutLower = ReadDouble();
             beam.LongitudinalCutUpper = ReadDouble();
             Console.WriteLine($"  Продольные разрезы: нижний={beam.LongitudinalCutLower}, верхний={beam.LongitudinalCutUpper}");
+            Console.WriteLine($"  Текущий токен перед контуром: {_tokenIndex} = {_tokens[_tokenIndex]}");
 
             int crossSectionCount = ReadInt();
             Console.WriteLine($"  Точек контура сечения: {crossSectionCount}");
+            Console.WriteLine($"  Первые 6 токенов контура: {string.Join(", ", _tokens.Skip(_tokenIndex).Take(6))}");
+
             for (int i = 0; i < crossSectionCount; i++)
             {
                 double z = ReadDouble();
