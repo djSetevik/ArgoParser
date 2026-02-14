@@ -862,17 +862,17 @@ namespace ArgoParser
         #region Поперечная арматура
 
         private void ConvertTransverseReinforcement(
-            Beam argoBeam, PrssmBeam prssmBeam,
-            IEnumerable<ParisCadPoint2D> profilePoints,
-            PrssmPoint bindingPoint,
-            ParisPoint2D llLocal,
-            double ribWidth,
-            double profMinY,
-            double ribTopY)
+    Beam argoBeam, PrssmBeam prssmBeam,
+    IEnumerable<ParisCadPoint2D> profilePoints,
+    PrssmPoint bindingPoint,
+    ParisPoint2D llLocal,
+    double ribWidth,
+    double profMinY,
+    double ribTopY)
         {
             if (argoBeam.StirrupSections.Count == 0) return;
 
-            // Высота ребра (от низа до верха ребра, не плиты!)
+            // Высота ребра (от низа до верха ребра)
             double ribH = ribTopY - profMinY;
 
             const double coverSide = 25;
@@ -895,23 +895,30 @@ namespace ArgoParser
                 double stirrupW = ribWidth - 2 * coverSide;
                 double stirrupH = ribH - 2 * coverBottom;
 
+                // Замкнутый прямоугольный хомут - 4 сегмента
                 prssmBeam.ReinforcementTransverses.Add(
                     new PrssmTransverseReinforcement
                     {
                         Diameter = d,
                         ItemsAtRow = cnt,
                         NAtItem = 1,
-                        IsClosed = false,
+                        IsClosed = true,  // Замкнутый хомут
                         StepElement = ss.Step * 10,
                         OffsetFromStart = startX,
                         YOffset = 0,
                         ZOffset = 0,
                         BindingPoint = bindingPoint,
-                        SegmentCount = 2,
+                        SegmentCount = 4,
                         Segments = new List<PrssmReinforcementSegment>
                         {
-                            new PrssmReinforcementSegment { Length = stirrupW, Angle = 0 },
-                            new PrssmReinforcementSegment { Length = stirrupH, Angle = 90, Height = stirrupH }
+                    // Низ - горизонтально вправо
+                    new PrssmReinforcementSegment { Length = stirrupW, Angle = 0, Height = 0 },
+                    // Правая сторона - вверх
+                    new PrssmReinforcementSegment { Length = stirrupH, Angle = 90, Height = stirrupH },
+                    // Верх - горизонтально влево
+                    new PrssmReinforcementSegment { Length = stirrupW, Angle = 180, Height = 0 },
+                    // Левая сторона - вниз
+                    new PrssmReinforcementSegment { Length = stirrupH, Angle = 270, Height = -stirrupH }
                         }
                     });
                 startX = ss.EndX * 10;
