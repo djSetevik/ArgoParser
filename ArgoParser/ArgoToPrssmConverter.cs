@@ -33,7 +33,7 @@ namespace ArgoParser
 
             var prssm = new PrssmDocument { BeamsNumber = argoDoc.GlobalParams.BeamCount };
 
-            var material = ConvertMaterial(argoDoc.GlobalParams);
+            var material = ConvertConcreteMaterial(argoDoc.GlobalParams);
             double firstBeamCoord = argoDoc.GlobalParams.BeamCoordinates.FirstOrDefault();
 
             double midAxisZ = 0;
@@ -633,7 +633,7 @@ namespace ArgoParser
 
         #region Материал
 
-        private PrssmMaterial ConvertMaterial(GlobalParameters gp)
+        private PrssmMaterial ConvertConcreteMaterial(GlobalParameters gp)
         {
             var (name, youngModulus, stdType) = GetConcreteClass(gp.ConcreteStrength);
             return new PrssmMaterial
@@ -651,22 +651,44 @@ namespace ArgoParser
 
         private (string Name, double YoungModulus, int StdType) GetConcreteClass(double strength)
         {
-            if (strength <= 7.5) return ("Б7.5", 16000, 8);
-            if (strength <= 10) return ("Б10", 18000, 9);
-            if (strength <= 12.5) return ("Б12.5", 21000, 10);
-            if (strength <= 15) return ("Б15", 23000, 11);
-            if (strength <= 17.5) return ("Б17.5", 25500, 12);
-            if (strength <= 20) return ("Б20", 27000, 13);
-            if (strength <= 22.5) return ("Б22.5", 28500, 14);
-            if (strength <= 25) return ("Б25", 30000, 15);
-            if (strength <= 27.5) return ("Б27.5", 31000, 16);
-            if (strength <= 30) return ("Б30", 32500, 17);
-            if (strength <= 35) return ("Б35", 34500, 18);
-            if (strength <= 40) return ("Б40", 36000, 19);
-            if (strength <= 45) return ("Б45", 37000, 20);
-            if (strength <= 50) return ("Б50", 38000, 21);
-            if (strength <= 55) return ("Б55", 39000, 22);
-            return ("Б60", 39500, 23);
+            if (strength <= 7.5) return ("Б7.5", 16000, 30);
+            if (strength <= 10) return ("Б10", 18000, 31);
+            if (strength <= 12.5) return ("Б12.5", 21000, 32);
+            if (strength <= 15) return ("Б15", 23000, 33);
+            if (strength <= 17.5) return ("Б17.5", 25500, 34);
+            if (strength <= 20) return ("Б20", 27000, 35);
+            if (strength <= 22.5) return ("Б22.5", 28500, 36);
+            if (strength <= 25) return ("Б25", 30000, 37);
+            if (strength <= 27.5) return ("Б27.5", 31000, 38);
+            if (strength <= 30) return ("Б30", 32500, 39);
+            if (strength <= 35) return ("Б35", 34500, 40);
+            if (strength <= 40) return ("Б40", 36000, 41);
+            if (strength <= 45) return ("Б45", 37000, 42);
+            if (strength <= 50) return ("Б50", 38000, 43);
+            if (strength <= 55) return ("Б55", 39000, 44);
+            return ("Б60", 39500, 45);
+        }
+
+        private PrssmMaterial ConvertReinforcementMaterial(double reinforcementType)
+        {
+            var (name, youngModulus, stdType) = GetReinforcementClass(reinforcementType);
+            return new PrssmMaterial
+            {
+                Id = _materialIdCounter++,
+                Name = name,
+                MaterialType = 2,
+                StandartMaterialType = stdType,
+                YoungModulus = youngModulus,
+                PoissonRatio = 0.3,
+                SpecificWeight = 0.00007698,
+                ThermalCoefficient = 0.000012
+            };
+        }
+
+        private (string Name, double YoungModulus, int StdType) GetReinforcementClass(double type)
+        {
+            if (type == 0.0) return ("A240", 27000, 1);
+            return ("A300", 27000, 2);
         }
 
         #endregion
@@ -688,7 +710,7 @@ namespace ArgoParser
 
             if (detailed == null || (detailed.TensileBars.Count == 0 && detailed.CompressedBars.Count == 0))
             {
-                ConvertLongFromCalc(argoBeam, prssmBeam, llLocal, bindingPointGlobal,
+                ConvertLongFromCalc(argoBeam, argoDoc, prssmBeam, llLocal, bindingPointGlobal,
                     profMinY, ribTopY, ribAxisXLocal, ribWidth);
                 return;
             }
@@ -726,6 +748,7 @@ namespace ArgoParser
                 {
                     Diameter = dg.Diameter,
                     ItemsAtRow = dg.Count,
+                    Material = ConvertReinforcementMaterial(argoDoc.GlobalParams.TensileReinforcementType),
                     NAtItem = 1,
                     BindingPoint = bindingPointGlobal,
                     YOffset = Math.Round(yOffset, 2),
@@ -772,6 +795,7 @@ namespace ArgoParser
                 {
                     Diameter = dg.Diameter,
                     ItemsAtRow = dg.Count,
+                    Material = ConvertReinforcementMaterial(argoDoc.GlobalParams.CompressedReinforcementType),
                     NAtItem = 1,
                     BindingPoint = bindingPointGlobal,
                     YOffset = Math.Round(yOffset, 2),
@@ -789,6 +813,7 @@ namespace ArgoParser
 
         private void ConvertLongFromCalc(
             Beam argoBeam,
+            ArgoDocument argoDoc,
             PrssmBeam prssmBeam,
             ParisPoint2D llLocal,
             PrssmPoint bindingPointGlobal,
@@ -813,6 +838,7 @@ namespace ArgoParser
                     Diameter = d,
                     ItemsAtRow = n,
                     NAtItem = 1,
+                    Material = ConvertReinforcementMaterial(argoDoc.GlobalParams.TensileReinforcementType),
                     BindingPoint = bindingPointGlobal,
                     YOffset = Math.Round(firstX - llLocal.X, 2),
                     ZOffset = Math.Round(zAbs - llLocal.Y, 2),
@@ -843,6 +869,7 @@ namespace ArgoParser
                     Diameter = d,
                     ItemsAtRow = n,
                     NAtItem = 1,
+                    Material = ConvertReinforcementMaterial(argoDoc.GlobalParams.CompressedReinforcementType),
                     BindingPoint = bindingPointGlobal,
                     YOffset = Math.Round(firstX - llLocal.X, 2),
                     ZOffset = Math.Round(zAbs - llLocal.Y, 2),
@@ -902,6 +929,7 @@ namespace ArgoParser
                         Diameter = d,
                         ItemsAtRow = cnt,
                         NAtItem = 1,
+                        Material = ConvertReinforcementMaterial(0),
                         IsClosed = true,  // Замкнутый хомут
                         StepElement = ss.Step * 10,
                         OffsetFromStart = startX,

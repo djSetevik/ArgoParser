@@ -56,66 +56,36 @@ namespace ArgoParser
             }
 
             Console.WriteLine($"Папка RAW: {rawFolder}");
-            Console.WriteLine($"Папка PRSSM: {prssmFolder}");
+            Console.WriteLine($"Папка PRSSM: {prssmFolder}");           
+            int _counter = 1;
+            foreach (var file in files)
+            {
+                var name = file.Split("\\");
+                Console.WriteLine($"{_counter}: {name[name.Length-1]}");
+                _counter++;
+            }
             Console.WriteLine($"Найдено файлов АРГО: {files.Length}\n");
             Console.WriteLine(new string('═', 70));
 
+            Console.WriteLine("Укажите порядковый номер файла для конвертации. Для конвертации всех файлов в папке RAW нажмите Enter");
             int success = 0, failed = 0;
-            var errors = new List<string>();
-
-            foreach (var file in files)
+            var errors = new List<string>(); 
+            
+            string input = Console.ReadLine();
+            if (int.TryParse(input, out int number))
             {
-                string relativePath = Path.GetRelativePath(rawFolder, file);
-                string fileName = Path.GetFileName(file);
-
-                Console.Write($"  {relativePath,-50} ");
-
-                try
-                {
-                    // 1) Парсим файл АРГО
-                    var parser = new ArgoParser();
-                    var doc = parser.Parse(file);
-
-                    // 2) Конвертируем в PRSSM
-                    var converter = new ArgoToPrssmConverter();
-                    var prssmDoc = converter.Convert(doc);
-
-                    // 3) Определяем выходной путь (сохраняем структуру подпапок)
-                    string relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-                    string outputDir = string.IsNullOrEmpty(relativeDir)
-                        ? prssmFolder
-                        : Path.Combine(prssmFolder, relativeDir);
-
-                    if (!Directory.Exists(outputDir))
-                    {
-                        Directory.CreateDirectory(outputDir);
+                for (int i = 0; i < files.Length; i++)
+                    if (number == i + 1)
+                    { 
+                        ReadFile(files[i], rawFolder, prssmFolder, ref success, ref errors, ref failed);
+                        break;
                     }
-
-                    string outName = fileName.Replace(".", "_") + ".prssm";
-                    string outPath = Path.Combine(outputDir, outName);
-
-                    // 4) Сохраняем JSON
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                    };
-                    string json = JsonSerializer.Serialize(prssmDoc, options);
-                    File.WriteAllText(outPath, json);
-
-                    Console.WriteLine($"✓");
-                    success++;
-                }
-                catch (Exception ex)
-                {
-                    string errMsg = ex.Message.Length > 30 ? ex.Message.Substring(0, 30) + "..." : ex.Message;
-                    Console.WriteLine($"✗ {errMsg}");
-                    errors.Add($"{relativePath}: {ex.Message}");
-                    failed++;
-                }
             }
-
+            else
+            {
+                foreach (var file in files)
+                    ReadFile(file, rawFolder, prssmFolder, ref success, ref errors, ref failed);
+            }
             Console.WriteLine(new string('═', 70));
             Console.WriteLine($"\nИТОГО: {success} успешно, {failed} ошибок из {files.Length} файлов");
             Console.WriteLine($"Результаты в: {prssmFolder}");
@@ -134,6 +104,59 @@ namespace ArgoParser
             }
 
             WaitForExit();
+        }
+
+        private static void ReadFile(string file, string rawFolder, string prssmFolder, ref int success, ref List<string> errors, ref int failed)
+        {
+            string relativePath = Path.GetRelativePath(rawFolder, file);
+            string fileName = Path.GetFileName(file);
+
+            Console.Write($"  {relativePath,-50} ");
+
+            try
+            {
+                // 1) Парсим файл АРГО
+                var parser = new ArgoParser();
+                var doc = parser.Parse(file);
+
+                // 2) Конвертируем в PRSSM
+                var converter = new ArgoToPrssmConverter();
+                var prssmDoc = converter.Convert(doc);
+
+                // 3) Определяем выходной путь (сохраняем структуру подпапок)
+                string relativeDir = Path.GetDirectoryName(relativePath) ?? "";
+                string outputDir = string.IsNullOrEmpty(relativeDir)
+                    ? prssmFolder
+                    : Path.Combine(prssmFolder, relativeDir);
+
+                if (!Directory.Exists(outputDir))
+                {
+                    Directory.CreateDirectory(outputDir);
+                }
+
+                string outName = fileName.Replace(".", "_") + ".prssm";
+                string outPath = Path.Combine(outputDir, outName);
+
+                // 4) Сохраняем JSON
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+                string json = JsonSerializer.Serialize(prssmDoc, options);
+                File.WriteAllText(outPath, json);
+
+                Console.WriteLine($"✓");
+                success++;
+            }
+            catch (Exception ex)
+            {
+                string errMsg = ex.Message.Length > 30 ? ex.Message.Substring(0, 30) + "..." : ex.Message;
+                Console.WriteLine($"✗ {errMsg}");
+                errors.Add($"{relativePath}: {ex.Message}");
+                failed++;
+            }
         }
 
         static void WaitForExit()

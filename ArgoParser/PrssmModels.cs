@@ -367,6 +367,9 @@ namespace ArgoParser
 
         [JsonPropertyName("Diameter")]
         public double Diameter { get; set; }
+        
+        [JsonPropertyName("Material")]
+        public PrssmMaterial Material { get; set; }
 
         [JsonPropertyName("NAtItem")]
         public int NAtItem { get; set; } = 1;
@@ -409,6 +412,9 @@ namespace ArgoParser
 
         [JsonPropertyName("Diameter")]
         public double Diameter { get; set; }
+
+        [JsonPropertyName("Material")]
+        public PrssmMaterial Material { get; set; }
 
         [JsonPropertyName("NAtItem")]
         public int NAtItem { get; set; } = 1;
