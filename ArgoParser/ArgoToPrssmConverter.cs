@@ -241,7 +241,7 @@ namespace ArgoParser
                     ribWidth);
 
                 ConvertTransverseReinforcement(
-                    argoBeam, prssmBeam, cadPoints, bindingPointGlobal, llLocal, ribWidth, profMinY, ribTopY);
+                    argoBeam, argoDoc, prssmBeam, cadPoints, bindingPointGlobal, llLocal, ribWidth, profMinY, ribTopY);
 
                 prssmBeam.LongitudinalReinforcementNumber = prssmBeam.ReinforcementLongitudinals.Count;
                 prssmBeam.TransverseReinforcementNumber = prssmBeam.ReinforcementTransverses.Count;
@@ -716,12 +716,14 @@ namespace ArgoParser
             }
 
             double ribWidthMm = ribWidth;
-
+            var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1))/2;
             // РАСТЯНУТЫЕ
             for (int j = 0; j < detailed.TensileBars.Count && j < argoBeam.TensileBars.Count; j++)
             {
                 var dg = detailed.TensileBars[j];
                 var cb = argoBeam.TensileBars[j];
+                var bends = argoBeam.Bends.FirstOrDefault(x => x.Area == cb.Area);
+
                 if (dg.Count <= 0) continue;
 
                 double yFirstAbs = 0;
@@ -739,10 +741,23 @@ namespace ArgoParser
                     stepElement = (dg.Count > 1) ? (lastX - firstX) / (dg.Count - 1) : 0;
                 }
 
-                double zAbs = profMinY + (cb.DeltaLower * 10);
+                //double zAbs = profMinY + (cb.DeltaLower * 10);
 
                 double yOffset = yFirstAbs - llLocal.X;
-                double zOffset = zAbs - llLocal.Y;
+                double zOffset = cb.DeltaLower * 10 /*zAbs - profMinY*/;
+                double xOffset = (supportExtra + cb.XMin)*10;
+
+                var bendSegment = new PrssmReinforcementSegment();
+                if (bends != null)
+                {
+                    var _l = (bends.LowerCoordinate - bends.UpperCoordinate) * 10;
+                    var _h = ribTopY - bends.DeltaUpper*10 - profMinY - bends.DeltaLower*10;
+                    bendSegment.Length = _l;
+                    bendSegment.Angle = -Math.Atan(_h / _l) * 180 / Math.PI;
+                    bendSegment.Height = _h;
+                    zOffset += _h;
+                    xOffset = (supportExtra + bends.UpperCoordinate)*10;
+                }
 
                 prssmBeam.ReinforcementLongitudinals.Add(new PrssmLongitudinalReinforcement
                 {
@@ -754,13 +769,18 @@ namespace ArgoParser
                     YOffset = Math.Round(yOffset, 2),
                     ZOffset = Math.Round(zOffset, 2),
                     StepElement = Math.Round(stepElement, 2),
-                    OffsetFromStart = Math.Max(0, cb.XMin * 10),
-                    SegmentCount = 1,
+                    OffsetFromStart = xOffset,
+                    SegmentCount = bends == null ? 1 : 3,
                     Segments = new List<PrssmReinforcementSegment>
                     {
                         new PrssmReinforcementSegment { Length = (cb.XMax - cb.XMin) * 10 }
                     }
                 });
+                if (bends != null)
+                { 
+                    prssmBeam.ReinforcementLongitudinals.Last().Segments.Insert(0, bendSegment);
+                    prssmBeam.ReinforcementLongitudinals.Last().Segments.Add(new PrssmReinforcementSegment() { Angle = -bendSegment.Angle, Length = bendSegment.Length, Height = bendSegment.Height });
+                }
             }
 
             // СЖАТЫЕ
@@ -889,7 +909,7 @@ namespace ArgoParser
         #region Поперечная арматура
 
         private void ConvertTransverseReinforcement(
-    Beam argoBeam, PrssmBeam prssmBeam,
+    Beam argoBeam, ArgoDocument argoDoc, PrssmBeam prssmBeam,
     IEnumerable<ParisCadPoint2D> profilePoints,
     PrssmPoint bindingPoint,
     ParisPoint2D llLocal,
@@ -905,19 +925,20 @@ namespace ArgoParser
             const double coverSide = 25;
             const double coverBottom = 25;
 
-            double startX = 0;
+            double startX = (argoDoc.GlobalParams.FullLength - argoBeam.StirrupSections.Sum(x => x.EndX)) / 2 * 10;
 
             foreach (var ss in argoBeam.StirrupSections)
             {
+                //ss.EndX = ss.EndX * 10 + startX;
                 if (ss.Area <= 0 || ss.Step <= 0)
                 {
-                    startX = ss.EndX * 10;
+                    startX += ss.EndX * 10;
                     continue;
                 }
 
                 double d = EstStirrupDiam(ss.Area);
-                double secLen = (ss.EndX * 10) - startX;
-                int cnt = (int)Math.Max(1, secLen / (ss.Step * 10));
+                //double secLen = (ss.EndX * 10) - startX;
+                int cnt = (int)(ss.EndX / ss.Step)+1;
 
                 double stirrupW = ribWidth - 2 * coverSide;
                 double stirrupH = ribH - 2 * coverBottom;
@@ -933,23 +954,21 @@ namespace ArgoParser
                         IsClosed = true,  // Замкнутый хомут
                         StepElement = ss.Step * 10,
                         OffsetFromStart = startX,
-                        YOffset = 0,
-                        ZOffset = 0,
+                        YOffset = coverSide,
+                        ZOffset = stirrupH + coverBottom,
                         BindingPoint = bindingPoint,
-                        SegmentCount = 4,
+                        SegmentCount = 3,
                         Segments = new List<PrssmReinforcementSegment>
                         {
-                    // Низ - горизонтально вправо
-                    new PrssmReinforcementSegment { Length = stirrupW, Angle = 0, Height = 0 },
-                    // Правая сторона - вверх
-                    new PrssmReinforcementSegment { Length = stirrupH, Angle = 90, Height = stirrupH },
-                    // Верх - горизонтально влево
-                    new PrssmReinforcementSegment { Length = stirrupW, Angle = 180, Height = 0 },
-                    // Левая сторона - вниз
-                    new PrssmReinforcementSegment { Length = stirrupH, Angle = 270, Height = -stirrupH }
+                            // Левая сторона - вниз
+                            new PrssmReinforcementSegment { Length = stirrupH, Angle = 270 },
+                            // Низ - горизонтально вправо
+                            new PrssmReinforcementSegment { Length = stirrupW, Angle = 0 },
+                            // Правая сторона - вверх
+                            new PrssmReinforcementSegment { Length = stirrupH, Angle = 90 },
                         }
                     });
-                startX = ss.EndX * 10;
+                startX += ss.EndX * 10;
             }
         }
 
