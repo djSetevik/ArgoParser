@@ -717,12 +717,13 @@ namespace ArgoParser
 
             double ribWidthMm = ribWidth;
             var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1))/2;
+            //var bendsIndex = -1;
             // РАСТЯНУТЫЕ
             for (int j = 0; j < detailed.TensileBars.Count && j < argoBeam.TensileBars.Count; j++)
             {
                 var dg = detailed.TensileBars[j];
                 var cb = argoBeam.TensileBars[j];
-                var bends = argoBeam.Bends.FirstOrDefault(x => x.Area == cb.Area);
+                var bends = argoBeam.Bends.FirstOrDefault(x => x.Area == cb.Area && x.DeltaLower == cb.DeltaLower);
 
                 if (dg.Count <= 0) continue;
 
@@ -780,6 +781,7 @@ namespace ArgoParser
                 { 
                     prssmBeam.ReinforcementLongitudinals.Last().Segments.Insert(0, bendSegment);
                     prssmBeam.ReinforcementLongitudinals.Last().Segments.Add(new PrssmReinforcementSegment() { Angle = -bendSegment.Angle, Length = bendSegment.Length, Height = bendSegment.Height });
+                    //bendsIndex++;
                 }
             }
 
