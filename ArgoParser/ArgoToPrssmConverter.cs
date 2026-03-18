@@ -199,6 +199,7 @@ namespace ArgoParser
                 // 16) PrssmSection
                 var prssmSection = ConvertSectionToPrssm(section, shape, i, offsetY, offsetZ);
 
+                var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1)) / 2;
                 // 17) Beam
                 var prssmBeam = new PrssmBeam
                 {
@@ -206,18 +207,52 @@ namespace ArgoParser
                     Material = material,
                     Position = positionMm,
                     Step = stepMm,
-                    BeamPartsNumber = 1
+                    BeamPartsNumber = supportExtra == 0 ? 1 :3
                 };
-
-                prssmBeam.BeamParts.Add(new PrssmBeamPart
+                
+                if(prssmBeam.BeamPartsNumber == 1)
                 {
-                    Id = 1,
-                    Section = prssmSection,
-                    Length = argoDoc.GlobalParams.FullLength * 10,
-                    Division = 1,
-                    IsStartPier = false,
-                    IsEndPier = false
-                });
+                    prssmBeam.BeamParts.Add(new PrssmBeamPart
+                    {
+                        Id = 1,
+                        Section = prssmSection,
+                        Length = argoDoc.GlobalParams.FullLength * 10,
+                        Division = 8,
+                        IsStartPier = true,
+                        IsEndPier = true
+                    });
+                }
+                else
+                {
+                    prssmBeam.BeamParts.Add(new PrssmBeamPart
+                    {
+                        Id = 1,
+                        Section = prssmSection,
+                        Length = supportExtra * 10,
+                        Division = 1,
+                        IsStartPier = false,
+                        IsEndPier = false
+                    });
+                    prssmBeam.BeamParts.Add(new PrssmBeamPart
+                    {
+                        Id = 2,
+                        Section = prssmSection,
+                        Length = (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1) * 10,
+                        Division = 8,
+                        IsStartPier = true,
+                        IsEndPier = true
+                    });
+                    prssmBeam.BeamParts.Add(new PrssmBeamPart
+                    {
+                        Id = 1,
+                        Section = prssmSection,
+                        Length = supportExtra * 10,
+                        Division = 1,
+                        IsStartPier = false,
+                        IsEndPier = false
+                    });
+                }
+                    
 
                 // 18) BindingPoint — локальные координаты точки 4 относительно точки привязки (низ-ось ребра)
                 double bindingX_local = point4_X - ribAxisX_centered;
