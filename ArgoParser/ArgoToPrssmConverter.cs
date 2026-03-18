@@ -740,7 +740,7 @@ namespace ArgoParser
             var detailed = argoDoc.DetailedReinforcement?.BeamDetails
                 .FirstOrDefault(d => d.BeamNumber == argoBeam.Number);
 
-            if (detailed == null || (detailed.TensileBars.Count == 0 && detailed.CompressedBars.Count == 0))
+              if (detailed == null || (detailed.TensileBars.Count == 0 && detailed.CompressedBars.Count == 0))
             {
                 ConvertLongFromCalc(argoBeam, argoDoc, prssmBeam, llLocal, bindingPointGlobal,
                     profMinY, ribTopY, ribAxisXLocal, ribWidth);
@@ -755,7 +755,9 @@ namespace ArgoParser
             {
                 var dg = detailed.TensileBars[j];
                 var cb = argoBeam.TensileBars[j];
-                var bends = argoBeam.Bends.FirstOrDefault(x => x.Area == cb.Area && x.DeltaLower == cb.DeltaLower);
+                var bends = argoBeam.Bends.FirstOrDefault(x =>
+                    Math.Abs(x.Area - cb.Area) < 0.01 &&
+                    Math.Abs(x.LowerCoordinate - cb.XMin) < 0.1);
 
                 if (dg.Count <= 0) continue;
 
