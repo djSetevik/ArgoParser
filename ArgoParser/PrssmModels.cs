@@ -194,6 +194,12 @@ namespace ArgoParser
 
         [JsonPropertyName("Id")]
         public int Id { get; set; }
+
+        [JsonPropertyName("StartShapes")]
+        public List<object> StartShapes { get; set; } = new();
+
+        [JsonPropertyName("EndShapes")]
+        public List<object> EndShapes { get; set; } = new();
     }
 
     /// <summary>
@@ -367,9 +373,6 @@ namespace ArgoParser
 
         [JsonPropertyName("Diameter")]
         public double Diameter { get; set; }
-        
-        [JsonPropertyName("Material")]
-        public PrssmMaterial Material { get; set; }
 
         [JsonPropertyName("NAtItem")]
         public int NAtItem { get; set; } = 1;
@@ -393,7 +396,10 @@ namespace ArgoParser
         public int SegmentCount { get; set; }
 
         [JsonPropertyName("Segments")]
-        public List<PrssmReinforcementSegment> Segments { get; set; } = new List<PrssmReinforcementSegment>();
+        public List<PrssmReinforcementSegment> Segments { get; set; } = new();
+
+        [JsonPropertyName("Material")]
+        public PrssmMaterial Material { get; set; }
 
         [JsonPropertyName("BindingPoint")]
         public PrssmPoint BindingPoint { get; set; }
@@ -442,6 +448,8 @@ namespace ArgoParser
 
         [JsonPropertyName("BindingPoint")]
         public PrssmPoint BindingPoint { get; set; }
+
+
     }
 
     /// <summary>
@@ -485,8 +493,8 @@ namespace ArgoParser
         [JsonPropertyName("DeltaZ")]
         public double DeltaZ { get; set; } = 0;
 
-        [JsonPropertyName("Width")]
-        public string Width { get; set; } = "1000";
+        //[JsonPropertyName("Width")]
+        //public string Width { get; set; } = "1000";
 
         [JsonPropertyName("IsGrouped")]
         public bool IsGrouped { get; set; } = false;

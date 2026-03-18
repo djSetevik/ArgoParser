@@ -288,10 +288,7 @@ namespace ArgoParser
             if (prssm.Beams.Count >= 2)
                 slabWidthMm = prssm.Beams.Last().Position - prssm.Beams.First().Position;
 
-            prssm.SelectedSlab = new PrssmSlab
-            {
-                Width = slabWidthMm > 0 ? slabWidthMm.ToString("F0") : "0"
-            };
+            prssm.SelectedSlab = new PrssmSlab();
 
             return prssm;
         }
