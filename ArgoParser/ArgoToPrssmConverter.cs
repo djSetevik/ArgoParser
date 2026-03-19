@@ -1,8 +1,4 @@
 ﻿using GeometryLibrary;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using ArgoPoint2D = ArgoParser.Point2D;
 using ParisSection = ArgoParser.Geometry.Section;
 
@@ -207,10 +203,10 @@ namespace ArgoParser
                     Material = material,
                     Position = positionMm,
                     Step = stepMm,
-                    BeamPartsNumber = supportExtra == 0 ? 1 :3
+                    BeamPartsNumber = supportExtra == 0 ? 1 : 3
                 };
-                
-                if(prssmBeam.BeamPartsNumber == 1)
+
+                if (prssmBeam.BeamPartsNumber == 1)
                 {
                     prssmBeam.BeamParts.Add(new PrssmBeamPart
                     {
@@ -252,7 +248,7 @@ namespace ArgoParser
                         IsEndPier = false
                     });
                 }
-                    
+
 
                 // 18) BindingPoint — локальные координаты точки 4 относительно точки привязки (низ-ось ребра)
                 double bindingX_local = point4_X - ribAxisX_centered;
@@ -740,7 +736,7 @@ namespace ArgoParser
             var detailed = argoDoc.DetailedReinforcement?.BeamDetails
                 .FirstOrDefault(d => d.BeamNumber == argoBeam.Number);
 
-              if (detailed == null || (detailed.TensileBars.Count == 0 && detailed.CompressedBars.Count == 0))
+            if (detailed == null || (detailed.TensileBars.Count == 0 && detailed.CompressedBars.Count == 0))
             {
                 ConvertLongFromCalc(argoBeam, argoDoc, prssmBeam, llLocal, bindingPointGlobal,
                     profMinY, ribTopY, ribAxisXLocal, ribWidth);
@@ -748,7 +744,7 @@ namespace ArgoParser
             }
 
             double ribWidthMm = ribWidth;
-            var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1))/2;
+            var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1)) / 2;
             //var bendsIndex = -1;
             // РАСТЯНУТЫЕ
             for (int j = 0; j < detailed.TensileBars.Count && j < argoBeam.TensileBars.Count; j++)
@@ -780,18 +776,18 @@ namespace ArgoParser
 
                 double yOffset = yFirstAbs - llLocal.X;
                 double zOffset = cb.DeltaLower * 10 /*zAbs - profMinY*/;
-                double xOffset = (supportExtra + cb.XMin)*10;
+                double xOffset = (supportExtra + cb.XMin) * 10;
 
                 var bendSegment = new PrssmReinforcementSegment();
                 if (bends != null)
                 {
                     var _l = (bends.LowerCoordinate - bends.UpperCoordinate) * 10;
-                    var _h = ribTopY - bends.DeltaUpper*10 - profMinY - bends.DeltaLower*10;
+                    var _h = ribTopY - bends.DeltaUpper * 10 - profMinY - bends.DeltaLower * 10;
                     bendSegment.Length = _l;
                     bendSegment.Angle = -Math.Atan(_h / _l) * 180 / Math.PI;
                     bendSegment.Height = _h;
                     zOffset += _h;
-                    xOffset = (supportExtra + bends.UpperCoordinate)*10;
+                    xOffset = (supportExtra + bends.UpperCoordinate) * 10;
                 }
 
                 prssmBeam.ReinforcementLongitudinals.Add(new PrssmLongitudinalReinforcement
@@ -812,7 +808,7 @@ namespace ArgoParser
                     }
                 });
                 if (bends != null)
-                { 
+                {
                     prssmBeam.ReinforcementLongitudinals.Last().Segments.Insert(0, bendSegment);
                     prssmBeam.ReinforcementLongitudinals.Last().Segments.Add(new PrssmReinforcementSegment() { Angle = -bendSegment.Angle, Length = bendSegment.Length, Height = bendSegment.Height });
                     //bendsIndex++;
@@ -963,6 +959,9 @@ namespace ArgoParser
 
             double startX = (argoDoc.GlobalParams.FullLength - argoBeam.StirrupSections.Sum(x => x.EndX)) / 2 * 10;
 
+            var detailed = argoDoc.DetailedReinforcement?.BeamDetails
+                .FirstOrDefault(d => d.BeamNumber == argoBeam.Number);
+
             foreach (var ss in argoBeam.StirrupSections)
             {
                 //ss.EndX = ss.EndX * 10 + startX;
@@ -972,38 +971,40 @@ namespace ArgoParser
                     continue;
                 }
 
-                double d = EstStirrupDiam(ss.Area);
+                (double d, int branches) = EstStirrupDiam(ss.Area, detailed.TensileBars.Max(x => x.Count));
                 //double secLen = (ss.EndX * 10) - startX;
-                int cnt = (int)(ss.EndX / ss.Step)+1;
+                int cnt = (int)(ss.EndX / ss.Step) + 1;
 
-                double stirrupW = ribWidth - 2 * coverSide;
                 double stirrupH = ribH - 2 * coverBottom;
 
-                // Замкнутый прямоугольный хомут - 4 сегмента
-                prssmBeam.ReinforcementTransverses.Add(
-                    new PrssmTransverseReinforcement
-                    {
-                        Diameter = d,
-                        ItemsAtRow = cnt,
-                        NAtItem = 1,
-                        Material = ConvertReinforcementMaterial(0),
-                        IsClosed = true,  // Замкнутый хомут
-                        StepElement = ss.Step * 10,
-                        OffsetFromStart = startX,
-                        YOffset = coverSide,
-                        ZOffset = stirrupH + coverBottom,
-                        BindingPoint = bindingPoint,
-                        SegmentCount = 3,
-                        Segments = new List<PrssmReinforcementSegment>
+                for(int i = 1; i <= branches/2; i++)
+                {
+                    // Замкнутый прямоугольный хомут - 3 сегмента
+                    prssmBeam.ReinforcementTransverses.Add(
+                        new PrssmTransverseReinforcement
                         {
+                            Diameter = d,
+                            ItemsAtRow = cnt,
+                            NAtItem = 1,
+                            Material = ConvertReinforcementMaterial(0),
+                            IsClosed = false,  // Замкнутый хомут
+                            StepElement = ss.Step * 10,
+                            OffsetFromStart = startX,
+                            YOffset = coverSide * i,
+                            ZOffset = stirrupH + coverBottom,
+                            BindingPoint = bindingPoint,
+                            SegmentCount = 3,
+                            Segments = new List<PrssmReinforcementSegment>
+                            {
                             // Левая сторона - вниз
                             new PrssmReinforcementSegment { Length = stirrupH, Angle = 270 },
                             // Низ - горизонтально вправо
-                            new PrssmReinforcementSegment { Length = stirrupW, Angle = 0 },
+                            new PrssmReinforcementSegment { Length = ribWidth - 2 * coverSide * i, Angle = 0 },
                             // Правая сторона - вверх
                             new PrssmReinforcementSegment { Length = stirrupH, Angle = 90 },
-                        }
-                    });
+                            }
+                        });
+                }
                 startX += ss.EndX * 10;
             }
         }
@@ -1025,12 +1026,15 @@ namespace ArgoParser
             return (16, Math.Max(1, (int)Math.Round(areaMm2 / (Math.PI * 256 / 4))));
         }
 
-        private double EstStirrupDiam(double areaCm2)
+        private (double Diametr, int Branches) EstStirrupDiam(double areaCm2, int reinfCount)
         {
-            double areaMm2 = areaCm2 * 100 / 2;
-            foreach (var d in new[] { 6, 8, 10, 12, 14 })
-                if (Math.PI * d * d / 4 >= areaMm2 * 0.8) return d;
-            return 10;
+            for (int i = 2; i < reinfCount; i += 2)
+            {
+                double areaMm2 = areaCm2 * 100 / i;
+                foreach (var d in new[] { 8, 10, 12 })
+                    if (Math.PI * d * d / 4 >= areaMm2 * 0.8) return (d, i);
+            }
+            return (10, 2);
         }
 
         #endregion
