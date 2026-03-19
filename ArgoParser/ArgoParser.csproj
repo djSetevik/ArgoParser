@@ -25,6 +25,7 @@
 	
   <ItemGroup>
     <Folder Include="Data\PRSSM\" />
+    <Folder Include="Data\RAW\" />
   </ItemGroup>
 	<ItemGroup>
 		<None Update="Data\RAW\**\*">

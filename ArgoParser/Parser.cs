@@ -176,7 +176,6 @@ namespace ArgoParser
                 beam.BorderSlabJunction[1] = ReadInt();
 
                 // Вторая пара BorderSlabJunction только для плитных (1-балочных) ПС
-                // У них борт с обеих сторон
                 if (totalBeams == 1)
                 {
                     beam.BorderSlabJunction2[0] = ReadInt();
@@ -200,8 +199,42 @@ namespace ArgoParser
                 double y = ReadDouble();
                 beam.CrossSectionContour.Add(new Point2D(z, y));
             }
+            Console.WriteLine($"  Токены после контура: {string.Join(", ", _tokens.Skip(_tokenIndex).Take(10))}");
 
-            beam.ChangedPointsCount = ReadInt();
+            int firstValue = ReadInt();
+
+            if (firstValue == 0)
+            {
+                int peekValue = PeekInt();
+
+                if (peekValue > 0 && peekValue <= 20)
+                {
+                    double thirdToken = PeekDoubleAt(1);
+
+                    bool thirdIsIndex = (thirdToken == Math.Floor(thirdToken)) &&
+                                        (thirdToken >= 1) &&
+                                        (thirdToken <= crossSectionCount);
+
+                    if (thirdIsIndex)
+                    {
+                        Console.WriteLine($"  Пропущено лишнее поле: {firstValue}");
+                        beam.ChangedPointsCount = ReadInt();
+                    }
+                    else
+                    {
+                        beam.ChangedPointsCount = firstValue;
+                    }
+                }
+                else
+                {
+                    beam.ChangedPointsCount = firstValue;
+                }
+            }
+            else
+            {
+                beam.ChangedPointsCount = firstValue;
+            }
+
             Console.WriteLine($"  Измененных точек: {beam.ChangedPointsCount}");
             if (beam.ChangedPointsCount > 0)
             {
@@ -212,6 +245,17 @@ namespace ArgoParser
                     double z = ReadDouble();
                     double y = ReadDouble();
                     beam.ChangedPoints.Add(new Point2D(z, y));
+                }
+
+                int nextValue = PeekInt();
+                if (nextValue == 0)
+                {
+                    double afterNext = PeekDoubleAt(1);
+                    if (afterNext == Math.Floor(afterNext) && afterNext > 0 && afterNext <= 20)
+                    {
+                        ReadInt();
+                        Console.WriteLine($"  Пропущено лишнее поле после изменённых точек: 0");
+                    }
                 }
             }
 
@@ -268,6 +312,30 @@ namespace ArgoParser
             }
 
             return beam;
+        }
+
+        private double PeekDoubleAt(int offset)
+        {
+            int idx = _tokenIndex + offset;
+            if (idx >= _tokens.Count)
+                return double.NaN;
+            return double.Parse(_tokens[idx], CultureInfo.InvariantCulture);
+        }
+
+        private int PeekInt()
+        {
+            return PeekIntAt(0);
+        }
+
+        private int PeekIntAt(int offset)
+        {
+            int idx = _tokenIndex + offset;
+            if (idx >= _tokens.Count)
+                return -1;
+            var token = _tokens[idx];
+            if (token.Contains('.'))
+                return (int)Math.Round(double.Parse(token, CultureInfo.InvariantCulture));
+            return int.Parse(token);
         }
 
         private SlabReinforcement ParseSlabReinforcement()
