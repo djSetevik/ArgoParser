@@ -987,7 +987,7 @@ namespace ArgoParser
                             ItemsAtRow = cnt,
                             NAtItem = 1,
                             Material = ConvertReinforcementMaterial(0),
-                            IsClosed = true,  // Замкнутый хомут
+                            IsClosed = false,  // Замкнутый хомут
                             StepElement = ss.Step * 10,
                             OffsetFromStart = startX,
                             YOffset = coverSide * i,
