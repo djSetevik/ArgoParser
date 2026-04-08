@@ -970,14 +970,17 @@ namespace ArgoParser
                     startX += ss.EndX * 10;
                     continue;
                 }
+                if (detailed == null)
+                    break;
 
                 (double d, int branches) = EstStirrupDiam(ss.Area, detailed.TensileBars.Max(x => x.Count));
+
                 //double secLen = (ss.EndX * 10) - startX;
                 int cnt = (int)(ss.EndX / ss.Step) + 1;
 
                 double stirrupH = ribH - 2 * coverBottom;
 
-                for(int i = 1; i <= branches/2; i++)
+                for (int i = 1; i <= branches / 2; i++)
                 {
                     // Замкнутый прямоугольный хомут - 3 сегмента
                     prssmBeam.ReinforcementTransverses.Add(
@@ -987,7 +990,7 @@ namespace ArgoParser
                             ItemsAtRow = cnt,
                             NAtItem = 1,
                             Material = ConvertReinforcementMaterial(0),
-                            IsClosed = false,  // Замкнутый хомут
+                            IsClosed = false,
                             StepElement = ss.Step * 10,
                             OffsetFromStart = startX,
                             YOffset = coverSide * i,
