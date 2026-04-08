@@ -511,20 +511,6 @@ namespace ArgoParser
             var contour = argoBeam.CrossSectionContour
                 .Select(p => new ArgoPoint2D(p.Z, p.Y)).ToList();
 
-            if (argoBeam.ChangedPointsCount > 0)
-            {
-                for (int j = 0; j < argoBeam.ChangedPointsCount; j++)
-                {
-                    int idx = argoBeam.ChangedPointIndices[j] - 1;
-                    if (idx >= 0 && idx < contour.Count)
-                    {
-                        contour[idx] = new ArgoPoint2D(
-                            argoBeam.ChangedPoints[j].Z,
-                            argoBeam.ChangedPoints[j].Y);
-                    }
-                }
-            }
-
             // Убираем дубликаты точек (соседние точки с одинаковыми координатами)
             var filtered = new List<ArgoPoint2D>();
             for (int i = 0; i < contour.Count; i++)

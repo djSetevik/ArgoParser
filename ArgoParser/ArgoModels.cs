@@ -306,6 +306,13 @@ namespace ArgoParser
 
         [JsonPropertyName("СжатыеСтержни")]
         public List<CompressedBar> CompressedBars { get; set; } = new List<CompressedBar>();
+
+        public int ChangedPointsCount2 { get; set; }
+        public List<int> ChangedPointIndices2 { get; set; } = new List<int>();
+        public List<Point2D> ChangedPoints2 { get; set; } = new List<Point2D>();
+
+        [JsonPropertyName("АсимметрияАрмироманияОтгибов")]
+        public double BendSymmetryFlag { get; set; }
     }
 
     public class SlabReinforcement

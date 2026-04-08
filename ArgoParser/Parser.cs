@@ -130,10 +130,14 @@ namespace ArgoParser
 
             int ribCount = fileCode?.MainRibCount ?? 0;
 
+            bool isPlateStructure = (ribCount == 0);
             bool isEdgeBeam = (beamNumber == 1 || beamNumber == totalBeams);
             bool isInnerBeam = (totalBeams > 2) && !isEdgeBeam;
             bool hasLoads = isEdgeBeam || (totalBeams <= 2);
 
+            Console.WriteLine($"  [Тип: ribCount={ribCount}, isEdge={isEdgeBeam}, isInner={isInnerBeam}, hasLoads={hasLoads}, isPlate={isPlateStructure}]");
+
+            // 1. Тротуары и ограждения (4 числа)
             if (hasLoads)
             {
                 beam.SidewalkLoadIntensity = ReadDouble();
@@ -147,8 +151,10 @@ namespace ArgoParser
                 Console.WriteLine($"  Нагрузки: пропущены (внутренняя балка)");
             }
 
+            // 2. Арматура плиты
             beam.SlabReinforcement = ParseSlabReinforcement();
 
+            // 3. Сосредоточенные силы
             int concentratedForceCount = ReadInt();
             Console.WriteLine($"  Сосредоточенных сил: {concentratedForceCount}");
             for (int i = 0; i < concentratedForceCount; i++)
@@ -158,40 +164,40 @@ namespace ArgoParser
                 beam.ConcentratedForces.Add(new ConcentratedForce { X = x, Value = force });
             }
 
+            // 4. Расчётные сечения
             beam.SectionCount = ReadInt();
             Console.WriteLine($"  Расчетных сечений: {beam.SectionCount}");
             for (int i = 0; i < beam.SectionCount; i++)
                 beam.SectionCoordinates.Add(ReadDouble());
 
-            // Junction points - всегда 2 пары для всех балок
+            // 5. Характерные точки
             beam.SlabBeamJunction[0] = ReadInt();
             beam.SlabBeamJunction[1] = ReadInt();
             beam.SlabVuteJunction[0] = ReadInt();
             beam.SlabVuteJunction[1] = ReadInt();
 
-            // BorderSlabJunction только для крайних балок (балка 1 и последняя)
             if (isEdgeBeam)
             {
                 beam.BorderSlabJunction[0] = ReadInt();
                 beam.BorderSlabJunction[1] = ReadInt();
-
-                // Вторая пара BorderSlabJunction только для плитных (1-балочных) ПС
-                if (totalBeams == 1)
-                {
-                    beam.BorderSlabJunction2[0] = ReadInt();
-                    beam.BorderSlabJunction2[1] = ReadInt();
-                }
             }
 
-            // Продольные разрезы
+            // Для однобалочных ПС — ещё одна пара точек
+            // (граница борта балластного корыта с большими координатами Z)
+            if (totalBeams == 1)
+            {
+                beam.BorderSlabJunction2[0] = ReadInt();
+                beam.BorderSlabJunction2[1] = ReadInt();
+            }
+
+            // 6. Продольные разрезы
             beam.LongitudinalCutLower = ReadDouble();
             beam.LongitudinalCutUpper = ReadDouble();
             Console.WriteLine($"  Продольные разрезы: нижний={beam.LongitudinalCutLower}, верхний={beam.LongitudinalCutUpper}");
-            Console.WriteLine($"  Текущий токен перед контуром: {_tokenIndex} = {_tokens[_tokenIndex]}");
 
+            // 7. Контур поперечного сечения
             int crossSectionCount = ReadInt();
             Console.WriteLine($"  Точек контура сечения: {crossSectionCount}");
-            Console.WriteLine($"  Первые 6 токенов контура: {string.Join(", ", _tokens.Skip(_tokenIndex).Take(6))}");
 
             for (int i = 0; i < crossSectionCount; i++)
             {
@@ -199,67 +205,164 @@ namespace ArgoParser
                 double y = ReadDouble();
                 beam.CrossSectionContour.Add(new Point2D(z, y));
             }
-            Console.WriteLine($"  Токены после контура: {string.Join(", ", _tokens.Skip(_tokenIndex).Take(10))}");
+
+            // 8. Изменённые точки и отгибы
+            // ДВА ФОРМАТА:
+            //   Простой (A/B/S-серии):  changedCount [indices] [coords] bendCount [bends]
+            //   Двублочный (N-серии):   0 count1 [data1] 0 count2 [data2] flag bendCount [bends]
+            //
+            // Алгоритм детекции:
+            //   1. first > 0 → простой формат (first = changedCount)
+            //   2. first == 0, second > 0 → проверяем токен на позиции current + 3*second:
+            //      если = 0 → двублочный (separator2)
+            //      иначе → простой (changedCount=0, second=bendCount)
+            //   3. first == 0, second == 0 → простой (changedCount=0, bendCount=0)
 
             int firstValue = ReadInt();
 
+            bool isTwoBlockFormat = false;
+            bool isOneBlockWithSeparators = false;
+            int secondValue = 0;
+
             if (firstValue == 0)
             {
-                int peekValue = PeekInt();
+                // Заглядываем вперёд НЕ потребляя токен
+                secondValue = PeekInt();
 
-                if (peekValue > 0 && peekValue <= 20)
+                if (secondValue > 0)
                 {
-                    double thirdToken = PeekDoubleAt(1);
-
-                    bool thirdIsIndex = (thirdToken == Math.Floor(thirdToken)) &&
-                                        (thirdToken >= 1) &&
-                                        (thirdToken <= crossSectionCount);
-
-                    if (thirdIsIndex)
+                    // Проверяем: после N индексов + N пар координат стоит 0?
+                    int lookaheadPos = _tokenIndex + 1 + 3 * secondValue;
+                    if (lookaheadPos < _tokens.Count)
                     {
-                        Console.WriteLine($"  Пропущено лишнее поле: {firstValue}");
-                        beam.ChangedPointsCount = ReadInt();
+                        double lookaheadVal = double.Parse(_tokens[lookaheadPos], CultureInfo.InvariantCulture);
+                        if (lookaheadVal == 0)
+                        {
+                            // Нашли паттерн: 0 N [3N данных] 0 ...
+                            // Нужно различить:
+                            //   Двублочный (N4): ... 0 count2 INDEX(целое) ...
+                            //   Одноблочный с сепараторами (N2): ... 0 bendCount AREA(дробное) ...
+                            int extraCheckPos = lookaheadPos + 2;
+                            if (extraCheckPos < _tokens.Count)
+                            {
+                                double valAfter = double.Parse(_tokens[extraCheckPos], CultureInfo.InvariantCulture);
+                                if (valAfter != Math.Floor(valAfter))
+                                {
+                                    // Дробное число → площадь отгиба → одноблочный формат
+                                    isOneBlockWithSeparators = true;
+                                }
+                                else
+                                {
+                                    // Целое число → индекс точки → двублочный формат
+                                    isTwoBlockFormat = true;
+                                }
+                            }
+                            else
+                            {
+                                isOneBlockWithSeparators = true;
+                            }
+                        }
                     }
-                    else
-                    {
-                        beam.ChangedPointsCount = firstValue;
-                    }
-                }
-                else
-                {
-                    beam.ChangedPointsCount = firstValue;
                 }
             }
-            else
+
+            int bendCount;
+
+            if (firstValue > 0)
             {
+                // Простой формат: firstValue = changedCount
+                Console.WriteLine($"  Формат: простой, changedCount={firstValue}");
                 beam.ChangedPointsCount = firstValue;
-            }
 
-            Console.WriteLine($"  Измененных точек: {beam.ChangedPointsCount}");
-            if (beam.ChangedPointsCount > 0)
-            {
-                for (int i = 0; i < beam.ChangedPointsCount; i++)
+                for (int i = 0; i < firstValue; i++)
                     beam.ChangedPointIndices.Add(ReadInt());
-                for (int i = 0; i < beam.ChangedPointsCount; i++)
+                for (int i = 0; i < firstValue; i++)
                 {
                     double z = ReadDouble();
                     double y = ReadDouble();
                     beam.ChangedPoints.Add(new Point2D(z, y));
                 }
 
-                int nextValue = PeekInt();
-                if (nextValue == 0)
+                bendCount = ReadInt();
+            }
+            else if (isOneBlockWithSeparators)
+            {
+                // Одноблочный с сепараторами (N2-серия): 0 count [data] 0 bendCount
+                // Первый 0 уже потреблён как firstValue
+                beam.ChangedPointsCount = ReadInt(); // потребляем count
+                Console.WriteLine($"  Формат: одноблочный с сепараторами, changedCount={beam.ChangedPointsCount}");
+
+                if (beam.ChangedPointsCount > 0)
                 {
-                    double afterNext = PeekDoubleAt(1);
-                    if (afterNext == Math.Floor(afterNext) && afterNext > 0 && afterNext <= 20)
+                    for (int i = 0; i < beam.ChangedPointsCount; i++)
+                        beam.ChangedPointIndices.Add(ReadInt());
+                    for (int i = 0; i < beam.ChangedPointsCount; i++)
                     {
-                        ReadInt();
-                        Console.WriteLine($"  Пропущено лишнее поле после изменённых точек: 0");
+                        double z = ReadDouble();
+                        double y = ReadDouble();
+                        beam.ChangedPoints.Add(new Point2D(z, y));
                     }
                 }
+
+                ReadDouble(); // потребляем второй сепаратор (0)
+                bendCount = ReadInt();
+            }
+            else if (isTwoBlockFormat)
+            {
+                // Двублочный формат: first=separator1(0), second=count1
+                // secondValue был только просмотрен (Peek), теперь потребляем
+                ReadInt(); // потребляем count1 (== secondValue)
+                Console.WriteLine($"  Формат: двублочный, count1={secondValue}");
+
+                beam.ChangedPointsCount = secondValue;
+
+                if (secondValue > 0)
+                {
+                    for (int i = 0; i < secondValue; i++)
+                        beam.ChangedPointIndices.Add(ReadInt());
+                    for (int i = 0; i < secondValue; i++)
+                    {
+                        double z = ReadDouble();
+                        double y = ReadDouble();
+                        beam.ChangedPoints.Add(new Point2D(z, y));
+                    }
+                    Console.WriteLine($"    Блок1: indices=[{string.Join(", ", beam.ChangedPointIndices)}]");
+                }
+
+                // Блок 2
+                double separator2 = ReadDouble();
+                int changedCount2 = ReadInt();
+                Console.WriteLine($"    Блок2: sep={separator2}, count={changedCount2}");
+                beam.ChangedPointsCount2 = changedCount2;
+
+                if (changedCount2 > 0)
+                {
+                    for (int i = 0; i < changedCount2; i++)
+                        beam.ChangedPointIndices2.Add(ReadInt());
+                    for (int i = 0; i < changedCount2; i++)
+                    {
+                        double z = ReadDouble();
+                        double y = ReadDouble();
+                        beam.ChangedPoints2.Add(new Point2D(z, y));
+                    }
+                    Console.WriteLine($"    Блок2: indices=[{string.Join(", ", beam.ChangedPointIndices2)}]");
+                }
+
+                // Флаг симметрии отгибов
+                beam.BendSymmetryFlag = ReadDouble();
+                Console.WriteLine($"  Флаг симметрии отгибов: {beam.BendSymmetryFlag}");
+
+                bendCount = ReadInt();
+            }
+            else
+            {
+                // Простой формат: changedCount=0 (first=0), bendCount=следующий токен
+                bendCount = ReadInt(); // потребляем bendCount (был только просмотрен как secondValue)
+                Console.WriteLine($"  Формат: простой, changedCount=0, bendCount={bendCount}");
+                beam.ChangedPointsCount = 0;
             }
 
-            int bendCount = ReadInt();
+            // 9. Отогнутые стержни
             Console.WriteLine($"  Отгибов: {bendCount}");
             for (int i = 0; i < bendCount; i++)
             {
@@ -273,6 +376,7 @@ namespace ArgoParser
                 });
             }
 
+            // 10. Хомуты
             int stirrupCount = ReadInt();
             Console.WriteLine($"  Секций хомутов: {stirrupCount}");
             for (int i = 0; i < stirrupCount; i++)
@@ -285,6 +389,7 @@ namespace ArgoParser
                 });
             }
 
+            // 11. Растянутые стержни
             int tensileCount = ReadInt();
             Console.WriteLine($"  Растянутых стержней: {tensileCount}");
             for (int i = 0; i < tensileCount; i++)
@@ -298,6 +403,7 @@ namespace ArgoParser
                 });
             }
 
+            // 12. Сжатые стержни
             int compressedCount = ReadInt();
             Console.WriteLine($"  Сжатых стержней: {compressedCount}");
             for (int i = 0; i < compressedCount; i++)
@@ -311,31 +417,9 @@ namespace ArgoParser
                 });
             }
 
+            Console.WriteLine($"  === Конец балки #{beamNumber}, токен: {_tokenIndex} ===");
+
             return beam;
-        }
-
-        private double PeekDoubleAt(int offset)
-        {
-            int idx = _tokenIndex + offset;
-            if (idx >= _tokens.Count)
-                return double.NaN;
-            return double.Parse(_tokens[idx], CultureInfo.InvariantCulture);
-        }
-
-        private int PeekInt()
-        {
-            return PeekIntAt(0);
-        }
-
-        private int PeekIntAt(int offset)
-        {
-            int idx = _tokenIndex + offset;
-            if (idx >= _tokens.Count)
-                return -1;
-            var token = _tokens[idx];
-            if (token.Contains('.'))
-                return (int)Math.Round(double.Parse(token, CultureInfo.InvariantCulture));
-            return int.Parse(token);
         }
 
         private SlabReinforcement ParseSlabReinforcement()
@@ -386,36 +470,95 @@ namespace ArgoParser
                 Console.WriteLine($"\n  Детализация балки #{beam.Number}");
                 var bd = new BeamDetailed { BeamNumber = beam.Number };
 
+                // Растянутые стержни
                 for (int i = 0; i < beam.TensileBars.Count; i++)
                 {
                     if (!HasMoreTokens()) break;
+
                     int count = ReadInt();
-                    if (count <= 0) { _tokenIndex--; break; }
+
+                    if (count == 0)
+                    {
+                        // Проверяем: "0 0" означает пустую группу (пропускаем оба нуля)
+                        if (HasMoreTokens())
+                        {
+                            int nextVal = PeekInt();
+                            if (nextVal == 0)
+                            {
+                                ReadInt(); // потребляем второй 0
+                                Console.WriteLine($"    Растянутые #{i + 1}: пусто (0 0)");
+                                continue;
+                            }
+                        }
+                        _tokenIndex--;
+                        break;
+                    }
+
+                    if (count < 0)
+                    {
+                        _tokenIndex--;
+                        break;
+                    }
 
                     double diameter = ReadDouble();
                     var group = new DetailedBarGroup { Count = count, Diameter = diameter };
+
                     for (int j = 0; j < count; j++)
+                    {
+                        if (!HasMoreTokens()) break;
                         group.ZCoordinates.Add(ReadDouble());
+                    }
+
                     bd.TensileBars.Add(group);
                     Console.WriteLine($"    Растянутые #{i + 1}: {count} × Ø{diameter}");
                 }
 
+                // Сжатые стержни
                 for (int i = 0; i < beam.CompressedBars.Count; i++)
                 {
                     if (!HasMoreTokens()) break;
+
                     int count = ReadInt();
-                    if (count <= 0) { _tokenIndex--; break; }
+
+                    if (count == 0)
+                    {
+                        if (HasMoreTokens())
+                        {
+                            int nextVal = PeekInt();
+                            if (nextVal == 0)
+                            {
+                                ReadInt();
+                                Console.WriteLine($"    Сжатые #{i + 1}: пусто (0 0)");
+                                continue;
+                            }
+                        }
+                        _tokenIndex--;
+                        break;
+                    }
+
+                    if (count < 0)
+                    {
+                        _tokenIndex--;
+                        break;
+                    }
 
                     double diameter = ReadDouble();
                     var group = new DetailedBarGroup { Count = count, Diameter = diameter };
+
                     for (int j = 0; j < count; j++)
+                    {
+                        if (!HasMoreTokens()) break;
                         group.ZCoordinates.Add(ReadDouble());
+                    }
+
                     bd.CompressedBars.Add(group);
                     Console.WriteLine($"    Сжатые #{i + 1}: {count} × Ø{diameter}");
                 }
 
+                // Арматура плиты
                 if (beam.SlabReinforcement?.CalculatedBarsCount > 0)
                 {
+                    Console.WriteLine($"    Арматура плиты: {beam.SlabReinforcement.CalculatedBarsCount} стержней");
                     for (int i = 0; i < beam.SlabReinforcement.CalculatedBarsCount; i++)
                     {
                         if (!HasMoreTokens()) break;
@@ -423,7 +566,6 @@ namespace ArgoParser
                         double s = ReadDouble();
                         bd.PlateBars.Add(new PlateBarInfo { Diameter = d, Step = s });
                     }
-                    Console.WriteLine($"    Арматура плиты: {bd.PlateBars.Count} стержней");
                 }
 
                 detailed.BeamDetails.Add(bd);
@@ -433,6 +575,15 @@ namespace ArgoParser
         }
 
         private bool HasMoreTokens() => _tokenIndex < _tokens.Count;
+
+        private int PeekInt()
+        {
+            if (_tokenIndex >= _tokens.Count) return -1;
+            var token = _tokens[_tokenIndex];
+            if (token.Contains('.'))
+                return (int)Math.Round(double.Parse(token, CultureInfo.InvariantCulture));
+            return int.Parse(token);
+        }
 
         private double ReadDouble()
         {
