@@ -839,7 +839,7 @@ namespace ArgoParser
                     YOffset = Math.Round(yOffset, 2),
                     ZOffset = Math.Round(zOffset, 2),
                     StepElement = Math.Round(stepElement, 2),
-                    OffsetFromStart = Math.Max(0, cb.XMin * 10),
+                    OffsetFromStart = Math.Max(0, (supportExtra + cb.XMin) * 10),
                     SegmentCount = 1,
                     Segments = new List<PrssmReinforcementSegment>
                     {
@@ -943,13 +943,17 @@ namespace ArgoParser
             const double coverSide = 25;
             const double coverBottom = 25;
 
-            double startX = (argoDoc.GlobalParams.FullLength - argoBeam.StirrupSections.Sum(x => x.EndX)) / 2 * 10;
+            var supportExtra = (argoDoc.GlobalParams.FullLength - (argoDoc.GlobalParams.SupportAxis2 - argoDoc.GlobalParams.SupportAxis1)) / 2;
+
+            double startX = (argoDoc.GlobalParams.FullLength - argoBeam.StirrupSections.Max(x => x.EndX)) / 2 * 10;
+            double sumLength = startX / 10 - supportExtra;
 
             var detailed = argoDoc.DetailedReinforcement?.BeamDetails
                 .FirstOrDefault(d => d.BeamNumber == argoBeam.Number);
 
-            foreach (var ss in argoBeam.StirrupSections)
+            for (int j =0; j< argoBeam.StirrupSections.Count; j++)
             {
+                var ss = argoBeam.StirrupSections[j];
                 //ss.EndX = ss.EndX * 10 + startX;
                 if (ss.Area <= 0 || ss.Step <= 0)
                 {
@@ -962,7 +966,7 @@ namespace ArgoParser
                 (double d, int branches) = EstStirrupDiam(ss.Area, detailed.TensileBars.Max(x => x.Count));
 
                 //double secLen = (ss.EndX * 10) - startX;
-                int cnt = (int)(ss.EndX / ss.Step) + 1;
+                int cnt = (int)((ss.EndX - sumLength) / ss.Step) + 1;
 
                 double stirrupH = ribH - 2 * coverBottom;
 
@@ -978,7 +982,7 @@ namespace ArgoParser
                             Material = ConvertReinforcementMaterial(0),
                             IsClosed = false,
                             StepElement = ss.Step * 10,
-                            OffsetFromStart = startX,
+                            OffsetFromStart = sumLength > 0 ? argoBeam.StirrupSections[j - 1].EndX * 10 : startX,
                             YOffset = coverSide * i,
                             ZOffset = stirrupH + coverBottom,
                             BindingPoint = bindingPoint,
@@ -994,7 +998,10 @@ namespace ArgoParser
                             }
                         });
                 }
-                startX += ss.EndX * 10;
+                if (sumLength < 0)
+                    sumLength = ss.EndX;
+                else
+                    sumLength += ss.EndX - argoBeam.StirrupSections[j-1].EndX;
             }
         }
 
