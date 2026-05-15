@@ -5,7 +5,8 @@ using System.Text.Json.Serialization;
 namespace ArgoParser
 {
     /// <summary>
-    /// Корневой объект документа PRSSM
+    /// Корневой объект документа PRSSM.
+    /// Соответствует DockingManager.TypicalStructureViews.Span.BeamSpan.BeamSpanData.
     /// </summary>
     public class PrssmDocument
     {
@@ -16,7 +17,7 @@ namespace ArgoParser
         public int BeamsNumber { get; set; }
 
         [JsonPropertyName("Beams")]
-        public List<PrssmBeam> Beams { get; set; } = new List<PrssmBeam>();
+        public List<PrssmBeam> Beams { get; set; } = new();
 
         [JsonPropertyName("R")]
         public double R { get; set; } = 0;
@@ -28,32 +29,29 @@ namespace ArgoParser
         public double Slant { get; set; } = 0;
 
         [JsonPropertyName("SelectedSlab")]
-        public PrssmSlab SelectedSlab { get; set; } = new PrssmSlab();
+        public PrssmSlab? SelectedSlab { get; set; } = null;
 
         [JsonPropertyName("BracesNumber")]
         public int BracesNumber { get; set; } = 0;
 
         [JsonPropertyName("Braces")]
-        public object Braces { get; set; } = null;
+        public List<object>? Braces { get; set; } = null;
 
         [JsonPropertyName("BraceMaterial")]
-        public object BraceMaterial { get; set; } = null;
+        public PrssmMaterial BraceMaterial { get; set; } = null;
 
         [JsonPropertyName("SelectedBeamSpanType")]
-        public PrssmSpanType SelectedBeamSpanType { get; set; } = new PrssmSpanType();
+        public PrssmSpanType SelectedBeamSpanType { get; set; } = new();
 
         [JsonPropertyName("Loads")]
-        public object Loads { get; set; } = null;
+        public List<PrssmBeamSpanLoadData>? Loads { get; set; } = null;
 
         [JsonPropertyName("SelfWeights")]
-        public object SelfWeights { get; set; } = null;
-
-        [JsonPropertyName("PanelLengths")]
-        public object PanelLengths { get; set; } = null;
+        public List<PrssmBeamSpanSelfWeightData>? SelfWeights { get; set; } = null;
     }
 
     /// <summary>
-    /// Балка в формате PRSSM
+    /// Балка в формате BeamSpanData.
     /// </summary>
     public class PrssmBeam
     {
@@ -61,7 +59,7 @@ namespace ArgoParser
         public int Id { get; set; }
 
         [JsonPropertyName("BeamParts")]
-        public List<PrssmBeamPart> BeamParts { get; set; } = new List<PrssmBeamPart>();
+        public List<PrssmBeamPart> BeamParts { get; set; } = new();
 
         [JsonPropertyName("BeamPartsNumber")]
         public int BeamPartsNumber { get; set; }
@@ -75,6 +73,9 @@ namespace ArgoParser
         [JsonPropertyName("Position")]
         public double Position { get; set; }
 
+        [JsonIgnore]
+        public double Length { get; set; }
+
         [JsonPropertyName("R")]
         public double R { get; set; } = 0;
 
@@ -85,14 +86,26 @@ namespace ArgoParser
         public int TransverseReinforcementNumber { get; set; }
 
         [JsonPropertyName("ReinforcementLongitudinals")]
-        public List<PrssmLongitudinalReinforcement> ReinforcementLongitudinals { get; set; } = new List<PrssmLongitudinalReinforcement>();
+        public List<PrssmLongitudinalReinforcement> ReinforcementLongitudinals { get; set; } = new();
 
         [JsonPropertyName("ReinforcementTransverses")]
-        public List<PrssmTransverseReinforcement> ReinforcementTransverses { get; set; } = new List<PrssmTransverseReinforcement>();
+        public List<PrssmTransverseReinforcement> ReinforcementTransverses { get; set; } = new();
+
+        [JsonIgnore]
+        public bool IsSelected { get; set; } = false;
+
+        [JsonIgnore]
+        public bool IsFirst { get; set; } = false;
+
+        [JsonIgnore]
+        public bool IsSlant { get; set; } = false;
+
+        [JsonIgnore]
+        public bool IsReinforcementEdit { get; set; } = true;
     }
 
     /// <summary>
-    /// Участок балки (секция по длине)
+    /// Участок балки по длине.
     /// </summary>
     public class PrssmBeamPart
     {
@@ -113,10 +126,14 @@ namespace ArgoParser
 
         [JsonPropertyName("IsEndPier")]
         public bool IsEndPier { get; set; } = true;
+
+        [JsonIgnore]
+        public bool IsSelected { get; set; } = false;
     }
 
     /// <summary>
-    /// Поперечное сечение
+    /// Поперечное сечение FEModel.Property.Section.
+    /// Единицы Paris/FEModel: мм, мм², мм⁴, МПа.
     /// </summary>
     public class PrssmSection
     {
@@ -124,7 +141,7 @@ namespace ArgoParser
         public string Name { get; set; } = "Custom";
 
         [JsonPropertyName("SectionType")]
-        public int SectionType { get; set; } = 1;
+        public int SectionType { get; set; } = 1; // FEModel.SectionType.Custom
 
         [JsonPropertyName("Yc")]
         public double Yc { get; set; }
@@ -175,7 +192,7 @@ namespace ArgoParser
         public double WzzMinus { get; set; }
 
         [JsonPropertyName("OffsetType")]
-        public int OffsetType { get; set; } = 0;
+        public int OffsetType { get; set; } = 11; // FEModel.SectionOffset.BottomAxiZ
 
         [JsonPropertyName("OffsetY")]
         public double OffsetY { get; set; } = 0;
@@ -184,10 +201,10 @@ namespace ArgoParser
         public double OffsetZ { get; set; } = 0;
 
         [JsonPropertyName("Shapes")]
-        public List<PrssmShape> Shapes { get; set; } = new List<PrssmShape>();
+        public List<PrssmShape> Shapes { get; set; } = new();
 
         [JsonPropertyName("StressPoints")]
-        public List<PrssmPoint> StressPoints { get; set; } = new List<PrssmPoint>();
+        public List<PrssmPoint> StressPoints { get; set; } = new();
 
         [JsonPropertyName("WeightFactor")]
         public double WeightFactor { get; set; } = 1;
@@ -203,7 +220,7 @@ namespace ArgoParser
     }
 
     /// <summary>
-    /// Геометрическая форма (контур сечения)
+    /// Геометрическая форма сечения FEModel.Property.Shapes._BaseShape.
     /// </summary>
     public class PrssmShape
     {
@@ -211,7 +228,7 @@ namespace ArgoParser
         public int Id { get; set; }
 
         [JsonPropertyName("CadType")]
-        public int CadType { get; set; } = 0;  // 0 для custom
+        public int CadType { get; set; } = 0; // FEModel.ShapeType.Custom
 
         [JsonPropertyName("Name")]
         public string Name { get; set; } = "custom";
@@ -226,30 +243,33 @@ namespace ArgoParser
         public bool IsReflectY { get; set; } = false;
 
         [JsonPropertyName("Location")]
-        public PrssmPoint Location { get; set; } = new PrssmPoint();
+        public PrssmPoint Location { get; set; } = new();
 
         [JsonPropertyName("Links")]
-        public List<object> Links { get; set; } = new List<object>();
+        public List<object> Links { get; set; } = new();
+
+        [JsonPropertyName("Area")]
+        public double Area { get; set; }
+
+        [JsonPropertyName("GC")]
+        public PrssmPoint GC { get; set; } = new();
+
+        [JsonPropertyName("SelectedRegionType")]
+        public int SelectedRegionType { get; set; } = 0;
 
         [JsonPropertyName("Profile")]
-        public List<PrssmProfileRegion> Profile { get; set; } = new List<PrssmProfileRegion>();
+        public List<PrssmProfileRegion> Profile { get; set; } = new();
     }
 
-    /// <summary>
-    /// Регион профиля (замкнутый контур)
-    /// </summary>
     public class PrssmProfileRegion
     {
         [JsonPropertyName("RegionType")]
         public int RegionType { get; set; } = 0;
 
         [JsonPropertyName("Points")]
-        public List<PrssmProfilePoint> Points { get; set; } = new List<PrssmProfilePoint>();
+        public List<PrssmProfilePoint> Points { get; set; } = new();
     }
 
-    /// <summary>
-    /// Точка профиля
-    /// </summary>
     public class PrssmProfilePoint
     {
         [JsonPropertyName("X")]
@@ -259,15 +279,12 @@ namespace ArgoParser
         public double Y { get; set; }
 
         [JsonPropertyName("IsAnchor")]
-        public bool IsAnchor { get; set; } = false;  // ИЗМЕНЕНО: false для custom
+        public bool IsAnchor { get; set; } = false;
 
         [JsonPropertyName("IsProfilePoint")]
         public bool IsProfilePoint { get; set; } = true;
     }
 
-    /// <summary>
-    /// Простая точка (X, Y)
-    /// </summary>
     public class PrssmPoint
     {
         [JsonPropertyName("X")]
@@ -286,7 +303,7 @@ namespace ArgoParser
     }
 
     /// <summary>
-    /// Материал
+    /// Материал FEModel.Property.Material.
     /// </summary>
     public class PrssmMaterial
     {
@@ -298,6 +315,9 @@ namespace ArgoParser
 
         [JsonPropertyName("StandartMaterialType")]
         public int StandartMaterialType { get; set; }
+
+        [JsonPropertyName("StandartType")]
+        public int StandartType { get; set; } = 1; // FEModel.MaterialStandartType.SP35
 
         [JsonPropertyName("YoungModulus")]
         public double YoungModulus { get; set; }
@@ -354,9 +374,6 @@ namespace ArgoParser
         public int Id { get; set; }
     }
 
-    /// <summary>
-    /// Продольное армирование
-    /// </summary>
     public class PrssmLongitudinalReinforcement
     {
         [JsonPropertyName("Angle")]
@@ -364,6 +381,9 @@ namespace ArgoParser
 
         [JsonPropertyName("Radius")]
         public double Radius { get; set; } = 0;
+
+        [JsonIgnore]
+        public bool IsLine { get; set; } = true;
 
         [JsonPropertyName("ReinforcementType")]
         public int ReinforcementType { get; set; } = 0;
@@ -403,15 +423,15 @@ namespace ArgoParser
 
         [JsonPropertyName("BindingPoint")]
         public PrssmPoint BindingPoint { get; set; }
+
+        [JsonIgnore]
+        public bool IsSelected { get; set; } = false;
     }
 
-    /// <summary>
-    /// Поперечное армирование (хомуты)
-    /// </summary>
     public class PrssmTransverseReinforcement
     {
         [JsonPropertyName("IsClosed")]
-        public bool IsClosed { get; set; } = false;
+        public bool IsClosed { get; set; } = true;
 
         [JsonPropertyName("Name")]
         public string Name { get; set; } = null;
@@ -444,17 +464,15 @@ namespace ArgoParser
         public int SegmentCount { get; set; }
 
         [JsonPropertyName("Segments")]
-        public List<PrssmReinforcementSegment> Segments { get; set; } = new List<PrssmReinforcementSegment>();
+        public List<PrssmReinforcementSegment> Segments { get; set; } = new();
 
         [JsonPropertyName("BindingPoint")]
         public PrssmPoint BindingPoint { get; set; }
 
-
+        [JsonIgnore]
+        public bool IsSelected { get; set; } = false;
     }
 
-    /// <summary>
-    /// Сегмент армирования
-    /// </summary>
     public class PrssmReinforcementSegment
     {
         [JsonPropertyName("Length")]
@@ -468,11 +486,11 @@ namespace ArgoParser
 
         [JsonPropertyName("Radius")]
         public double Radius { get; set; } = 0;
+
+        [JsonIgnore]
+        public bool IsFirst { get; set; } = false;
     }
 
-    /// <summary>
-    /// Плита
-    /// </summary>
     public class PrssmSlab
     {
         [JsonPropertyName("Thickness")]
@@ -493,19 +511,64 @@ namespace ArgoParser
         [JsonPropertyName("DeltaZ")]
         public double DeltaZ { get; set; } = 0;
 
-        //[JsonPropertyName("Width")]
-        //public string Width { get; set; } = "1000";
+        [JsonIgnore]
+        public double Width { get; set; } = 0;
 
         [JsonPropertyName("IsGrouped")]
         public bool IsGrouped { get; set; } = false;
 
+        [JsonPropertyName("PanelLengths")]
+        public List<PrssmSlabPanelLength> PanelLengths { get; set; } = new();
+
+        [JsonPropertyName("UnionType")]
+        public int UnionType { get; set; } = 0;
+
+        [JsonPropertyName("Section")]
+        public PrssmSection Section { get; set; } = null;
+
         [JsonPropertyName("Material")]
-        public object Material { get; set; } = null;
+        public PrssmMaterial Material { get; set; } = null;
     }
 
-    /// <summary>
-    /// Тип пролётного строения
-    /// </summary>
+    public class PrssmSlabPanelLength
+    {
+        [JsonPropertyName("Length")]
+        public double Length { get; set; }
+    }
+
+    public class PrssmBeamSpanLoadData
+    {
+        [JsonPropertyName("LoadCaseId")]
+        public int LoadCaseId { get; set; }
+
+        [JsonPropertyName("LoadCase")]
+        public object LoadCase { get; set; } = null;
+
+        [JsonPropertyName("Intensity")]
+        public double Intensity { get; set; }
+
+        [JsonPropertyName("BeamId")]
+        public int BeamId { get; set; }
+
+        [JsonPropertyName("Offset")]
+        public double Offset { get; set; }
+    }
+
+    public class PrssmBeamSpanSelfWeightData
+    {
+        [JsonPropertyName("LoadCaseId")]
+        public int LoadCaseId { get; set; }
+
+        [JsonPropertyName("LoadCase")]
+        public object LoadCase { get; set; } = null;
+
+        [JsonPropertyName("SpecificWeight")]
+        public double SpecificWeight { get; set; }
+
+        [JsonPropertyName("Thickness")]
+        public double Thickness { get; set; }
+    }
+
     public class PrssmSpanType
     {
         [JsonPropertyName("Key")]

@@ -8,17 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="CrossSection.Net">
-      <HintPath>..\CrossSection.Net.dll</HintPath>
-    </Reference>
     <Reference Include="GeometryLibrary">
       <HintPath>..\GeometryLibrary.dll</HintPath>
     </Reference>
-    <Reference Include="ParisCAD">
-      <HintPath>..\ParisCAD.dll</HintPath>
-    </Reference>
-    <Reference Include="TriangleNet">
-      <HintPath>..\TriangleNet.dll</HintPath>
+    <Reference Include="UnitLibrary">
+      <HintPath>..\UnitLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
 
